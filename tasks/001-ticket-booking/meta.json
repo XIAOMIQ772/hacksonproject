@@ -1,0 +1,10 @@
+{
+  "id": "arc-bench-web--12306",
+  "display_id": "TASK-001",
+  "competition": "arc-bench-web",
+  "title": "Train Ticket Booking System",
+  "test_runner": "playwright",
+  "total_tests": 138,
+  "test_files": 118,
+  "fetched_at": "2026-09-12T09:46:55+0800"
+}

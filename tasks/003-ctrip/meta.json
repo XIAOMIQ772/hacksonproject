@@ -1,0 +1,10 @@
+{
+  "id": "arc-bench-web--ctrip",
+  "display_id": "TASK-003",
+  "competition": "arc-bench-web",
+  "title": "Ctrip Travel System",
+  "test_runner": "playwright",
+  "total_tests": 126,
+  "test_files": 126,
+  "fetched_at": "2026-09-12T09:47:08+0800"
+}

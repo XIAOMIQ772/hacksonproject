@@ -1,0 +1,145 @@
+{
+    "files": [
+        {
+            "path": "REQ-1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.1\n// fixtures: public_homepage\n\ntest('REQ-1.1: Open Homepage', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectTextsVisible(page, [/BookStack/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.2\n// fixtures: public_homepage\n\ntest('REQ-1.2: Back to Homepage from Other Pages', async ({ page }) => {\n  await h.openShelves(page);\n  await h.returnHomeByLogo(page);\n  await h.expectTextsVisible(page, [/BookStack/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.1\n// fixtures: public_homepage, authenticated_user\n\ntest('REQ-2.1: Enter Login Page', async ({ page }) => {\n  await h.openLoginPage(page);\n  await h.expectTextsVisible(page, [/Login/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.2\n// fixtures: public_homepage, authenticated_user\n\ntest('REQ-2.2: Log In Successfully', async ({ page }) => {\n  await h.login(page);\n  await h.expectTextsVisible(page, [h.FIXTURES.auth.nickname]);\n});\n"
+        },
+        {
+            "path": "REQ-3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.1\n// fixtures: authenticated_dashboard\n\ntest('REQ-3.1: Enter Authenticated Homepage', async ({ page }) => {\n  await h.login(page);\n  await h.expectTextsVisible(page, ['My Recent Drafts', 'My Recently Viewed', 'My Most Viewed Favorites', 'Recently Updated Pages']);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1\n// fixtures: shelf_4_1\n\ntest('REQ-4.1: View Shelf List', async ({ page }) => {\n  await h.openShelves(page);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.list.name]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.1\n// fixtures: shelf_4_2_1\n\ntest('REQ-4.2.1: Enter Shelf Details Page', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.details.name);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.details.name]);\n});\n"
+        },
+        {
+            "path": "REQ-4.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.3.1\n// fixtures: shelf_4_3_1\n\ntest('REQ-4.3.1: Create Shelf', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.create.contextName);\n  await h.clickNamed(page, /New Shelf/i);\n  await h.fillShelfForm(page, h.FIXTURES.shelves.create, 'create');\n  await h.clickNamed(page, /Save Shelf/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.create.name]);\n});\n"
+        },
+        {
+            "path": "REQ-4.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.3.2\n// fixtures: shelf_4_3_2\n\ntest('REQ-4.3.2: Cancel Creation', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.cancelCreate.contextName);\n  await h.clickNamed(page, /New Shelf/i);\n  await h.clickNamed(page, /^Cancel$/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.cancelCreate.contextName]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.1\n// fixtures: shelf_4_4_1\n\ntest('REQ-4.4.1: Confirm Delete Shelf', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.deleteConfirm.name);\n  await h.clickNamed(page, /^Delete$/i);\n  await h.clickNamed(page, /Confirm|Delete/i);\n  await h.expectTextsVisible(page, [/Shelves/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.2\n// fixtures: shelf_4_4_2\n\ntest('REQ-4.4.2: Cancel Delete Shelf', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.deleteCancel.name);\n  await h.clickNamed(page, /^Delete$/i);\n  await h.clickNamed(page, /^Cancel$/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.deleteCancel.name]);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.1\n// fixtures: shelf_4_5_1\n\ntest('REQ-4.5.1: Save Shelf Edits', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.editSave.name);\n  await h.clickNamed(page, /^Edit$/i);\n  await h.fillShelfForm(page, h.FIXTURES.shelves.editSave, 'edit');\n  await h.clickNamed(page, /Save Shelf/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.editSave.updatedName]);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.2\n// fixtures: shelf_4_5_2\n\ntest('REQ-4.5.2: Cancel Shelf Edits', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.editCancel.name);\n  await h.clickNamed(page, /^Edit$/i);\n  await h.clickNamed(page, /^Cancel$/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.editCancel.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.1\n// fixtures: book_5_1\n\ntest('REQ-5.1: View Books List', async ({ page }) => {\n  await h.openBooks(page);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.list.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.2.1\n// fixtures: book_5_2_1\n\ntest('REQ-5.2.1: Enter Book Details Page through Book List Page', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.detailsFromList.name);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.detailsFromList.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.2.2\n// fixtures: shelf_5_2_2, book_5_2_2\n\ntest('REQ-5.2.2: Enter Book Details Page through Shelf Details Page', async ({ page }) => {\n  await h.openBookDetailsFromShelf(page, h.FIXTURES.books.detailsFromShelf.shelfName, h.FIXTURES.books.detailsFromShelf.name);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.detailsFromShelf.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.1\n// fixtures: none\n\ntest('REQ-5.3.1: Fill out and Save Book', async ({ page }) => {\n  await h.openBookCreationFromList(page);\n  await h.fillBookForm(page, h.FIXTURES.books.createFromList, 'create');\n  await h.clickNamed(page, /Save Book/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.createFromList.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.2\n// fixtures: none\n\ntest('REQ-5.3.2: Cancel Creating Book', async ({ page }) => {\n  await h.openBookCreationFromList(page);\n  await h.clickNamed(page, /^Cancel$/i);\n  await h.expectTextsVisible(page, [/Books/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4.1\n// fixtures: book_5_4_1\n\ntest('REQ-5.4.1: Save Book Edits', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.editSave.name);\n  await h.clickNamed(page, /^Edit$/i);\n  await h.fillBookForm(page, h.FIXTURES.books.editSave, 'edit');\n  await h.clickNamed(page, /Save Book/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.editSave.updatedName]);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4.2\n// fixtures: book_5_4_2\n\ntest('REQ-5.4.2: Cancel Book Edits', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.editCancel.name);\n  await h.clickNamed(page, /^Edit$/i);\n  await h.clickNamed(page, /^Cancel$/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.editCancel.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.1\n// fixtures: book_5_5_1\n\ntest('REQ-5.5.1: Confirm Delete Book', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.deleteConfirm.name);\n  await h.clickNamed(page, /^Delete$/i);\n  await h.clickNamed(page, /Confirm|Delete/i);\n  await h.expectTextsVisible(page, [/Books/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.2\n// fixtures: book_5_5_2\n\ntest('REQ-5.5.2: Cancel Delete Book', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.deleteCancel.name);\n  await h.clickNamed(page, /^Delete$/i);\n  await h.clickNamed(page, /^Cancel$/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.deleteCancel.name]);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6.1\n// fixtures: shelf_5_6_1\n\ntest('REQ-5.6.1: Fill out and Save Book with Shelf', async ({ page }) => {\n  await h.openBookCreationFromShelf(page, h.FIXTURES.books.createFromShelf.shelfName);\n  await h.fillBookForm(page, h.FIXTURES.books.createFromShelf, 'create');\n  await h.clickNamed(page, /Save Book/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.createFromShelf.name, h.FIXTURES.books.createFromShelf.shelfName]);\n});\n"
+        },
+        {
+            "path": "REQ-6.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.1.1\n// fixtures: book_6_1_1\n\ntest('REQ-6.1.1: Save Page', async ({ page }) => {\n  await h.openPageEditor(page, h.FIXTURES.books.pageSave.name);\n  await h.fillPageEditor(page, h.FIXTURES.pages.save);\n  await h.clickNamed(page, /Save Page/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.pages.save.name]);\n});\n"
+        },
+        {
+            "path": "REQ-6.1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.1.2\n// fixtures: book_6_1_2\n\ntest('REQ-6.1.2: Save Draft', async ({ page }) => {\n  await h.openPageEditor(page, h.FIXTURES.books.draftSave.name);\n  await h.fillPageEditor(page, h.FIXTURES.pages.draft);\n  await h.clickNamed(page, /Save Draft/i);\n  await h.returnHomeByLogo(page);\n  await h.expectTextsVisible(page, ['My Recent Drafts', h.FIXTURES.pages.draft.name]);\n});\n"
+        },
+        {
+            "path": "REQ-6.1.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.1.3\n// fixtures: book_6_1_3, draft_page_6_1_3\n\ntest('REQ-6.1.3: Delete Draft', async ({ page }) => {\n  await h.openDraftPageEditor(page, h.FIXTURES.books.draftDelete.bookName, h.FIXTURES.books.draftDelete.pageName);\n  await h.clickNamed(page, /Delete Draft/i);\n  await h.clickNamed(page, /Confirm|Delete/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.draftDelete.bookName]);\n});\n"
+        },
+        {
+            "path": "REQ-6.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.2.1\n// fixtures: book_6_2_1\n\ntest('REQ-6.2.1: Create Chapter', async ({ page }) => {\n  await h.openChapterCreation(page, h.FIXTURES.books.chapterCreate.name);\n  await h.fillChapterForm(page, h.FIXTURES.chapter);\n  await h.clickNamed(page, /Save Chapter/i);\n  await h.expectTextsVisible(page, [h.FIXTURES.chapter.name]);\n});\n"
+        },
+        {
+            "path": "REQ-6.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.3.1\n// fixtures: book_6_3_1, page_6_3_1\n\ntest('REQ-6.3.1: Enter Page Reading Page', async ({ page }) => {\n  await h.openPageReading(page, h.FIXTURES.books.pageRead.name, h.FIXTURES.books.pageRead.pageName);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.pageRead.pageName]);\n});\n"
+        },
+        {
+            "path": "REQ-6.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.3.2\n// fixtures: book_6_3_2, page_6_3_2\n\ntest('REQ-6.3.2: Redirect to Page Edit Page', async ({ page }) => {\n  await h.openPageReading(page, h.FIXTURES.books.pageEdit.name, h.FIXTURES.books.pageEdit.pageName);\n  await h.clickNamed(page, /^Edit$/i);\n  await h.expectTextsVisible(page, [/Save Page/i]);\n});\n"
+        },
+        {
+            "path": "REQ-7.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.1\n// fixtures: shelf_7_1\n\ntest('REQ-7.1: Add to Recently Viewed', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.recentlyViewed.name);\n  await h.returnHomeByLogo(page);\n  await h.expectTextsVisible(page, ['My Recently Viewed', h.FIXTURES.shelves.recentlyViewed.name]);\n});\n"
+        },
+        {
+            "path": "REQ-7.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2\n// fixtures: shelf_7_2\n\ntest('REQ-7.2: Quick Navigation from Recently Viewed', async ({ page }) => {\n  await h.openShelfDetails(page, h.FIXTURES.shelves.recentlyViewedNavigation.name);\n  await h.returnHomeByLogo(page);\n  await h.clickNamed(page, h.FIXTURES.shelves.recentlyViewedNavigation.name);\n  await h.expectTextsVisible(page, [h.FIXTURES.shelves.recentlyViewedNavigation.name]);\n});\n"
+        },
+        {
+            "path": "REQ-8.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.1\n// fixtures: book_8_1\n\ntest('REQ-8.1: Favorite Items', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.favorite.name);\n  await h.clickNamed(page, /^Favorite$/i);\n  await h.expectTextsVisible(page, [/Unfavorite/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.2\n// fixtures: book_8_2\n\ntest('REQ-8.2: Quick Navigation from Favorites', async ({ page }) => {\n  await h.openBookDetailsFromList(page, h.FIXTURES.books.favoriteNavigation.name);\n  await h.clickNamed(page, /^Favorite$/i);\n  await h.returnHomeByLogo(page);\n  await h.clickNamed(page, h.FIXTURES.books.favoriteNavigation.name);\n  await h.expectTextsVisible(page, [h.FIXTURES.books.favoriteNavigation.name]);\n});\n"
+        },
+        {
+            "path": "REQ-9.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.1\n// fixtures: book_9_1\n\ntest('REQ-9.1: Quick Navigation from Recently Updated', async ({ page }) => {\n  await h.openPageEditor(page, h.FIXTURES.books.recentlyUpdated.name);\n  await h.fillPageEditor(page, h.FIXTURES.pages.recentlyUpdated);\n  await h.clickNamed(page, /Save Page/i);\n  await h.returnHomeByLogo(page);\n  await h.clickNamed(page, h.FIXTURES.pages.recentlyUpdated.name);\n  await h.expectTextsVisible(page, [h.FIXTURES.pages.recentlyUpdated.name]);\n});\n"
+        },
+        {
+            "path": "helpers.ts",
+            "content": "import { expect, Locator, Page } from '@playwright/test';\n\nexport const FIXTURES = {\n  auth: {\n    nickname: 'BookStack User',\n    email: 'bookstack_user@example.com',\n    password: 'Password123!',\n  },\n  shelves: {\n    list: { name: 'Shelf 4.1' },\n    details: { name: 'Shelf 4.2.1' },\n    create: {\n      contextName: 'Shelf 4.3.1',\n      name: 'Shelf Created 4.3.1',\n      description: 'Shelf created by REQ-4.3.1.',\n      tags: 'created, shelf',\n    },\n    cancelCreate: { contextName: 'Shelf 4.3.2' },\n    deleteConfirm: { name: 'Shelf 4.4.1' },\n    deleteCancel: { name: 'Shelf 4.4.2' },\n    editSave: {\n      name: 'Shelf 4.5.1',\n      updatedName: 'Shelf Updated 4.5.1',\n      description: 'Reference shelf description.',\n      updatedDescription: 'Shelf updated by REQ-4.5.1.',\n      tags: 'knowledge-base, docs',\n    },\n    editCancel: {\n      name: 'Shelf 4.5.2',\n      updatedName: 'Shelf Updated 4.5.2',\n      description: 'Reference shelf description.',\n      updatedDescription: 'Shelf updated by REQ-4.5.2.',\n      tags: 'knowledge-base, docs',\n    },\n    bookDetails: { name: 'Shelf 5.2.2' },\n    bookCreate: { name: 'Shelf 5.6.1' },\n    recentlyViewed: { name: 'Shelf 7.1' },\n    recentlyViewedNavigation: { name: 'Shelf 7.2' },\n  },\n  books: {\n    list: { name: 'Book 5.1' },\n    detailsFromList: { name: 'Book 5.2.1' },\n    detailsFromShelf: { shelfName: 'Shelf 5.2.2', name: 'Book 5.2.2' },\n    createFromList: {\n      name: 'Book Created 5.3.1',\n      description: 'Book created by REQ-5.3.1.',\n      tags: 'created, book',\n    },\n    editSave: {\n      name: 'Book 5.4.1',\n      updatedName: 'Book Updated 5.4.1',\n      description: 'Reference book description.',\n      updatedDescription: 'Book updated by REQ-5.4.1.',\n      tags: 'manual, handbook',\n    },\n    editCancel: {\n      name: 'Book 5.4.2',\n      updatedName: 'Book Updated 5.4.2',\n      description: 'Reference book description.',\n      updatedDescription: 'Book updated by REQ-5.4.2.',\n      tags: 'manual, handbook',\n    },\n    deleteConfirm: { name: 'Book 5.5.1' },\n    deleteCancel: { name: 'Book 5.5.2' },\n    createFromShelf: {\n      shelfName: 'Shelf 5.6.1',\n      name: 'Book Created 5.6.1',\n      description: 'Book created by REQ-5.6.1.',\n      tags: 'created, shelf-book',\n    },\n    pageSave: { name: 'Book 6.1.1' },\n    draftSave: { name: 'Book 6.1.2' },\n    draftDelete: { bookName: 'Book 6.1.3', pageName: 'Draft 6.1.3' },\n    chapterCreate: { name: 'Book 6.2.1' },\n    pageRead: { name: 'Book 6.3.1', pageName: 'Page 6.3.1' },\n    pageEdit: { name: 'Book 6.3.2', pageName: 'Page 6.3.2' },\n    favorite: { name: 'Book 8.1' },\n    favoriteNavigation: { name: 'Book 8.2' },\n    recentlyUpdated: { name: 'Book 9.1' },\n  },\n  pages: {\n    save: { name: 'Page Created 6.1.1', content: 'Page content created by REQ-6.1.1.' },\n    draft: { name: 'Page Draft 6.1.2', content: 'Draft content created by REQ-6.1.2.' },\n    recentlyUpdated: { name: 'Page Updated 9.1', content: 'Page content created by REQ-9.1.' },\n  },\n  chapter: {\n    name: 'Chapter Created 6.2.1',\n    description: 'Chapter created by REQ-6.2.1.',\n  },\n} as const;\n\nfunction escapeRegExp(text: string): string {\n  return text.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n}\n\nexport function toPattern(value: string | RegExp): RegExp {\n  if (value instanceof RegExp) return value;\n  return new RegExp(escapeRegExp(value).replace(/\\s+/g, '\\\\s+'), 'i');\n}\n\nasync function firstVisible(locators: Locator[]): Promise<Locator> {\n  for (const locator of locators) {\n    const candidate = locator.first();\n    try {\n      if (await candidate.isVisible({ timeout: 500 })) return candidate;\n    } catch {\n      // continue\n    }\n  }\n  return locators[0].first();\n}\n\nexport async function clickNamed(page: Page, value: string | RegExp): Promise<void> {\n  const name = toPattern(value);\n  const locator = await firstVisible([\n    page.getByRole('button', { name }),\n    page.getByRole('link', { name }),\n    page.getByRole('tab', { name }),\n    page.getByRole('menuitem', { name }),\n    page.getByText(name),\n  ]);\n  await locator.click();\n}\n\nexport async function expectTextsVisible(page: Page, values: Array<string | RegExp>): Promise<void> {\n  for (const value of values) {\n    const name = toPattern(value);\n    const locator = await firstVisible([\n      page.getByRole('heading', { name }),\n      page.getByRole('button', { name }),\n      page.getByRole('link', { name }),\n      page.getByRole('tab', { name }),\n      page.getByText(name),\n      page.getByLabel(name),\n      page.getByPlaceholder(name),\n    ]);\n    await expect(locator).toBeVisible();\n  }\n}\n\nexport async function fillField(page: Page, labelOrPlaceholder: string, value: string): Promise<void> {\n  const name = toPattern(labelOrPlaceholder);\n  const locator = await firstVisible([\n    page.getByLabel(name),\n    page.getByPlaceholder(name),\n    page.getByRole('textbox', { name }),\n    page.getByRole('searchbox', { name }),\n  ]);\n  await locator.fill(value);\n}\n\nexport async function expectSuccessFeedback(page: Page): Promise<void> {\n  const locator = await firstVisible([\n    page.getByRole('alert'),\n    page.getByRole('status'),\n    page.getByText(/success|saved|created|deleted|updated/i),\n  ]);\n  await expect(locator).toBeVisible();\n}\n\nexport async function openHome(page: Page): Promise<void> {\n  await page.goto('/');\n}\n\nexport async function openLoginPage(page: Page): Promise<void> {\n  await openHome(page);\n  await clickNamed(page, /^Login$/i);\n}\n\nexport async function login(page: Page): Promise<void> {\n  await openLoginPage(page);\n  await fillField(page, 'Email', FIXTURES.auth.email);\n  await fillField(page, 'Password', FIXTURES.auth.password);\n  const remember = page.getByRole('checkbox', { name: /remember me/i });\n  if (await remember.count()) {\n    await remember.check();\n  }\n  await clickNamed(page, /^Login$/i);\n}\n\nexport async function openShelves(page: Page): Promise<void> {\n  await openHome(page);\n  await clickNamed(page, /^Shelves$/i);\n}\n\nexport async function openShelfDetails(page: Page, shelfName: string): Promise<void> {\n  await openShelves(page);\n  await clickNamed(page, shelfName);\n}\n\nexport async function openBooks(page: Page): Promise<void> {\n  await openHome(page);\n  await clickNamed(page, /^Books$/i);\n}\n\nexport async function openBookDetailsFromList(page: Page, bookName: string): Promise<void> {\n  await openBooks(page);\n  await clickNamed(page, bookName);\n}\n\nexport async function openBookDetailsFromShelf(page: Page, shelfName: string, bookName: string): Promise<void> {\n  await openShelfDetails(page, shelfName);\n  await clickNamed(page, bookName);\n}\n\nexport async function openBookCreationFromList(page: Page): Promise<void> {\n  await openBooks(page);\n  await clickNamed(page, /Create New Book/i);\n}\n\nexport async function openBookCreationFromShelf(page: Page, shelfName: string): Promise<void> {\n  await openShelfDetails(page, shelfName);\n  await clickNamed(page, /Create New Book/i);\n}\n\nexport async function fillBookForm(\n  page: Page,\n  data: { name: string; description: string; tags: string; updatedName?: string; updatedDescription?: string },\n  mode: 'create' | 'edit' = 'create',\n): Promise<void> {\n  await fillField(page, 'Name', mode === 'edit' ? data.updatedName ?? data.name : data.name);\n  await fillField(page, 'Description', mode === 'edit' ? data.updatedDescription ?? data.description : data.description);\n  const tagsField = page.getByRole('textbox', { name: /tags/i }).first();\n  if (await tagsField.count()) {\n    await tagsField.fill(data.tags);\n  }\n}\n\nexport async function fillShelfForm(\n  page: Page,\n  data: { name: string; description: string; tags: string; updatedName?: string; updatedDescription?: string },\n  mode: 'create' | 'edit' = 'create',\n): Promise<void> {\n  await fillField(page, 'Name', mode === 'edit' ? data.updatedName ?? data.name : data.name);\n  await fillField(page, 'Description', mode === 'edit' ? data.updatedDescription ?? data.description : data.description);\n  const tagsField = page.getByRole('textbox', { name: /tags/i }).first();\n  if (await tagsField.count()) {\n    await tagsField.fill(data.tags);\n  }\n}\n\nexport async function openPageEditor(page: Page, bookName: string): Promise<void> {\n  await openBookDetailsFromList(page, bookName);\n  await clickNamed(page, /New Page/i);\n}\n\nexport async function openDraftPageEditor(page: Page, bookName: string, pageName: string): Promise<void> {\n  await openBookDetailsFromList(page, bookName);\n  await clickNamed(page, pageName);\n}\n\nexport async function fillPageEditor(page: Page, data: { name: string; content: string }): Promise<void> {\n  await fillField(page, 'Name', data.name);\n  const editor = await firstVisible([\n    page.getByRole('textbox', { name: /markdown|content|html/i }),\n    page.getByLabel(/markdown|content|html/i),\n    page.locator('textarea'),\n  ]);\n  await editor.fill(data.content);\n}\n\nexport async function openChapterCreation(page: Page, bookName: string): Promise<void> {\n  await openBookDetailsFromList(page, bookName);\n  await clickNamed(page, /New Chapter/i);\n}\n\nexport async function fillChapterForm(page: Page, data: { name: string; description: string }): Promise<void> {\n  await fillField(page, 'Name', data.name);\n  await fillField(page, 'Description', data.description);\n}\n\nexport async function openPageReading(page: Page, bookName: string, pageName: string): Promise<void> {\n  await openBookDetailsFromList(page, bookName);\n  await clickNamed(page, pageName);\n}\n\nexport async function returnHomeByLogo(page: Page): Promise<void> {\n  const logo = await firstVisible([\n    page.getByRole('link', { name: /bookstack/i }),\n    page.getByText(/bookstack/i),\n  ]);\n  await logo.click();\n}\n"
+        }
+    ],
+    "public_downloads": null
+}

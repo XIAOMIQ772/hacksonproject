@@ -1,0 +1,509 @@
+{
+    "files": [
+        {
+            "path": "REQ-0.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-0\n// fixtures: public_homepage\n\ntest('REQ-0: Open System', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectHome(page);\n});\n"
+        },
+        {
+            "path": "REQ-1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.1\n// fixtures: public_homepage\n\ntest('REQ-1.1: Open Homepage', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectHome(page);\n});\n"
+        },
+        {
+            "path": "REQ-10.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-10.1.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-10.1.1: Enter Domestic Airport Directory', async ({ page }) => {\n  await h.openAirportGuide(page);\n  await h.clickIfVisible(page, [/更多服务/, /more services/i]);\n  await h.clickFirstAvailable(page, [[/国内机场大全/, /domestic airport/i]]);\n  await h.expectAnyVisible(page, [[/国内机场/, /domestic airport/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-10.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-10.2.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-10.2.1: Enter International Airport Directory', async ({ page }) => {\n  await h.openAirportGuide(page);\n  await h.clickIfVisible(page, [/更多服务/, /more services/i]);\n  await h.clickFirstAvailable(page, [[/国际机场大全/, /international airport/i]]);\n  await h.expectAnyVisible(page, [[/国际/, /港澳台/, /international/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.1\n// fixtures: public_homepage\n\ntest('REQ-2.1: Open Registration Entry', async ({ page }) => {\n  await h.openHome(page);\n  await h.clickFirstAvailable(page, [[/注册/, /register/i, /sign up/i]]);\n  await h.expectAnyVisible(page, [[/注册/, /register/i], [/手机号/, /mobile/i, /验证/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.2\n// fixtures: public_homepage\n\ntest('REQ-2.2: Open Login Entry', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.3.1\n// fixtures: public_homepage\n\ntest('REQ-2.3.1: Enter Login Page', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.3.2\n// fixtures: public_homepage\n\ntest('REQ-2.3.2: Switch to Verification-Code Login', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.3.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.3.3\n// fixtures: public_homepage\n\ntest('REQ-2.3.3: Switch to Password Login', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n  await h.clickFirstAvailable(page, [[/账号登录/, /password login/i]]);\n  await h.expectPasswordLoginForm(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.4.1\n// fixtures: password_login_account\n\ntest('REQ-2.4.1: Password Login Flow', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n  await h.fillPasswordLogin(page, h.FIXTURES.accounts.passwordLogin.email, h.FIXTURES.accounts.passwordLogin.password, true);\n  await h.submitLogin(page);\n  await h.expectLoggedInState(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.4.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.4.2\n// fixtures: password_login_account\n\ntest('REQ-2.4.2: Exception: Username Missing', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n  await h.fillField(page, [/密码/, /password/i], h.FIXTURES.accounts.passwordLogin.password);\n  await h.setAgreement(page, true);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/请输入用户名/, /account/i, /username/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.4.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.4.3\n// fixtures: password_login_account\n\ntest('REQ-2.4.3: Exception: Password Missing', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n  await h.fillField(page, [/邮箱.*用户名.*手机号/, /email.*username.*mobile/i, /account/i], h.FIXTURES.accounts.passwordLogin.email);\n  await h.setAgreement(page, true);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/请输入登录密码/, /password/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.4.4.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.4.4\n// fixtures: password_login_account\n\ntest('REQ-2.4.4: Exception: Incorrect Username or Password', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n  await h.fillPasswordLogin(page, h.FIXTURES.accounts.passwordLogin.email, 'WrongPass123', true);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/用户名或密码错误/, /incorrect/i, /invalid/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.4.5.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.4.5\n// fixtures: password_login_account\n\ntest('REQ-2.4.5: Exception: Agreement Not Accepted', async ({ page }) => {\n  await h.ensurePasswordLogin(page);\n  await h.fillPasswordLogin(page, h.FIXTURES.accounts.passwordLogin.email, h.FIXTURES.accounts.passwordLogin.password, false);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/请先阅读并勾选协议/, /agree/i, /terms/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.5.1\n// fixtures: sms_login_account, sms_verification_code\n\ntest('REQ-2.5.1: Verification-Code Login Flow', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n  await h.fillField(page, [/手机号/, /mobile/i], h.FIXTURES.accounts.smsLogin.mobile);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.expectAnyVisible(page, [[/倒计时/, /重新发送/, /countdown/i, /resend/i]]);\n  await h.fillField(page, [/验证码/, /verification code/i], h.FIXTURES.accounts.smsLogin.verificationCode);\n  await h.setAgreement(page, true);\n  await h.submitLogin(page);\n  await h.expectLoggedInState(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.5.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.5.2\n// fixtures: public_homepage\n\ntest('REQ-2.5.2: Exception: Mobile Number Missing', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.expectErrorFeedback(page, [/请输入手机号/, /mobile/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.5.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.5.3\n// fixtures: sms_missing_code_account\n\ntest('REQ-2.5.3: Exception: Verification Code Missing', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n  await h.fillField(page, [/手机号/, /mobile/i], h.FIXTURES.accounts.smsMissingCode.mobile);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.setAgreement(page, true);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/请输入验证码/, /verification code/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.5.4.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.5.4\n// fixtures: sms_incorrect_code_account\n\ntest('REQ-2.5.4: Exception: Incorrect Verification Code', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n  await h.fillField(page, [/手机号/, /mobile/i], h.FIXTURES.accounts.smsIncorrectCode.mobile);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.fillField(page, [/验证码/, /verification code/i], '000000');\n  await h.setAgreement(page, true);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/验证码错误/, /incorrect code/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.5.5.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.5.5\n// fixtures: sms_agreement_account, sms_verification_code\n\ntest('REQ-2.5.5: Exception: Agreement Not Accepted', async ({ page }) => {\n  await h.ensureCodeLogin(page);\n  await h.fillField(page, [/手机号/, /mobile/i], h.FIXTURES.accounts.smsAgreement.mobile);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.fillField(page, [/验证码/, /verification code/i], h.FIXTURES.accounts.smsAgreement.verificationCode);\n  await h.submitLogin(page);\n  await h.expectErrorFeedback(page, [/请先阅读并勾选协议/, /agree/i, /terms/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.1\n// fixtures: public_homepage\n\ntest('REQ-2.6.1: Enter Registration Page', async ({ page }) => {\n  await h.openHome(page);\n  await h.clickFirstAvailable(page, [[/注册/, /register/i, /sign up/i]]);\n  await h.expectAnyVisible(page, [[/注册/, /register/i], [/手机号/, /mobile/i, /验证/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.2.1\n// fixtures: public_homepage\n\ntest('REQ-2.6.2.1: Trigger Registration Agreement', async ({ page }) => {\n  await h.beginRegistrationFromLogin(page);\n  await h.expectRegistrationAgreement(page);\n  await h.clickFirstAvailable(page, [[/同意并继续/, /agree and continue/i]]);\n  await h.expectAnyVisible(page, [[/手机号/, /mobile/i], [/验证码/, /verification code/i], [/设置密码/, /password/i, /下一步/, /next/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.2.2\n// fixtures: public_homepage\n\ntest('REQ-2.6.2.2: Decline Registration Agreement', async ({ page }) => {\n  await h.beginRegistrationFromLogin(page);\n  await h.expectRegistrationAgreement(page);\n  await h.cancelDialog(page);\n  await h.expectHome(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.3.1\n// fixtures: registration_verification_state\n\ntest('REQ-2.6.3.1: Enter Verification Information', async ({ page }) => {\n  await h.reachRegistrationVerifyStep(page);\n  await h.fillField(page, [/手机号/, /mobile/i], h.FIXTURES.registration.verification.mobile);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.expectAnyVisible(page, [[/倒计时/, /重新发送/, /countdown/i, /resend/i]]);\n  await h.fillField(page, [/验证码/, /verification code/i], h.FIXTURES.registration.verification.code);\n  await h.clickFirstAvailable(page, [[/下一步/, /设置密码/, /next/i]]);\n  await h.expectAnyVisible(page, [[/设置密码/, /password/i], [/确认密码/, /confirm/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.4.1\n// fixtures: registration_success_state\n\ntest('REQ-2.6.4.1: Set Password and Complete Registration', async ({ page }) => {\n  await h.reachRegistrationPasswordStep(page, h.FIXTURES.registration.success);\n  await h.fillField(page, [/设置密码/, /登录密码/, /password/i], h.FIXTURES.registration.success.password);\n  await h.fillField(page, [/确认密码/, /confirm/i], h.FIXTURES.registration.success.password);\n  await h.clickFirstAvailable(page, [[/完成注册/, /complete registration/i, /register/i]]);\n  await h.expectAnyVisible(page, [[/注册成功/, /success/i], [/登录/, /^login$/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.4.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.4.2\n// fixtures: registration_password_mismatch_state\n\ntest('REQ-2.6.4.2: Exception: Passwords Do Not Match', async ({ page }) => {\n  await h.reachRegistrationPasswordStep(page, h.FIXTURES.registration.mismatch);\n  await h.fillField(page, [/设置密码/, /登录密码/, /password/i], h.FIXTURES.registration.mismatch.password);\n  await h.fillField(page, [/确认密码/, /confirm/i], 'Travel5678');\n  await h.clickFirstAvailable(page, [[/完成注册/, /complete registration/i, /register/i]]);\n  await h.expectErrorFeedback(page, [/两次输入的密码不一致/, /do not match/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.6.4.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.6.4.3\n// fixtures: registration_weak_password_state\n\ntest('REQ-2.6.4.3: Exception: Password Too Weak', async ({ page }) => {\n  await h.reachRegistrationPasswordStep(page, h.FIXTURES.registration.weak);\n  await h.fillField(page, [/设置密码/, /登录密码/, /password/i], h.FIXTURES.registration.weak.weakPassword!);\n  await h.fillField(page, [/确认密码/, /confirm/i], h.FIXTURES.registration.weak.weakPassword!);\n  await h.clickFirstAvailable(page, [[/完成注册/, /complete registration/i, /register/i]]);\n  await h.expectErrorFeedback(page, [/密码需包含字母和数字/, /长度不小于8位/, /password/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.7.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.7.1\n// fixtures: password_login_account\n\ntest('REQ-2.7.1: Log Out', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.passwordLogin);\n  await h.hoverIfVisible(page, [/尊敬的/, /我的携程/, /account/i]);\n  await h.clickFirstAvailable(page, [[/退出登录/, /sign out/i, /log out/i]]);\n  await h.expectAnyVisible(page, [[/登录/, /^login$/i, /sign in/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.1\n// fixtures: flight_search_home\n\ntest('REQ-3.2.1: Trip Type Selection', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickFirstAvailable(page, [[/往返/, /round trip/i]]);\n  await h.expectAnyVisible(page, [[/返回日期/, /return date/i]]);\n  await h.clickFirstAvailable(page, [[/单程/, /one way/i]]);\n  await h.expectAnyVisible(page, [[/\\+\\s*添加返程/, /添加返程/, /add return/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.2\n// fixtures: flight_search_home\n\ntest('REQ-3.2.2: Swap Origin and Destination', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.fillField(page, [/出发城市/, /出发地/, /from/i], h.FIXTURES.flightSearch.from);\n  await h.fillField(page, [/到达城市/, /目的地/, /to/i], h.FIXTURES.flightSearch.to);\n  await h.clickFirstAvailable(page, [[/双向箭头/, /swap/i, /exchange/i]]);\n  await h.expectFieldValue(page, [/出发城市/, /出发地/, /from/i], [/广州/, /CAN/]);\n  await h.expectFieldValue(page, [/到达城市/, /目的地/, /to/i], [/成都/, /CTU/]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.3\n// fixtures: flight_search_home\n\ntest('REQ-3.2.3: Exception: Same-City Validation', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.fillField(page, [/出发城市/, /from/i], h.FIXTURES.flightSearch.sameCity);\n  await h.fillField(page, [/到达城市/, /to/i], h.FIXTURES.flightSearch.sameCity);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectErrorFeedback(page, [/出发城市和到达城市不能相同/, /cannot be the same/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.4.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.4\n// fixtures: flight_search_home\n\ntest('REQ-3.2.4: Exception: Past-Date Validation', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickField(page, [/出发日期/, /departure date/i]);\n  await h.expectPastDepartureDateDisabled(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.5.1\n// fixtures: flight_search_home\n\ntest('REQ-3.2.5.1: Select a Hot City', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickField(page, [/出发城市/, /from/i]);\n  await h.expectAnyVisible(page, [[/热门/, /hot/i]]);\n  await h.clickFirstAvailable(page, [[/成都/]]);\n  await h.expectFieldValue(page, [/出发城市/, /from/i], [/成都/, /CTU/]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.5.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.5.2\n// fixtures: flight_search_home\n\ntest('REQ-3.2.5.2: Find Cities by Pinyin Group', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickField(page, [/到达城市/, /to/i]);\n  await h.expectAnyVisible(page, [[/GHIJ/]]);\n  await h.clickFirstAvailable(page, [[/GHIJ/]]);\n  await h.clickFirstAvailable(page, [[/广州/]]);\n  await h.expectFieldValue(page, [/到达城市/, /to/i], [/广州/, /CAN/]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.6.1\n// fixtures: flight_search_home\n\ntest('REQ-3.2.6.1: Select Departure Date', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickField(page, [/出发日期/, /departure date/i]);\n  await h.expectAnyVisible(page, [[/日历/, /calendar/i], [/￥/, /¥/]]);\n  await h.fillField(page, [/出发日期/, /departure date/i], h.FIXTURES.flightSearch.date);\n  await h.expectFieldValue(page, [/出发日期/, /departure date/i], h.FIXTURES.flightSearch.date);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.6.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.6.2\n// fixtures: flight_search_home\n\ntest('REQ-3.2.6.2: Select a Past Date', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickField(page, [/出发日期/, /departure date/i]);\n  await h.expectPastDepartureDateDisabled(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.7.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.7.1\n// fixtures: flight_search_home\n\ntest('REQ-3.2.7.1: Enable Return Trip', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickFirstAvailable(page, [[/\\+\\s*添加返程/, /添加返程/, /add return/i]]);\n  await h.expectAnyVisible(page, [[/返回日期/, /return date/i], [/往返/, /round trip/i]]);\n  await h.fillField(page, [/返回日期/, /return date/i], h.FIXTURES.flightSearch.returnDate);\n  await h.expectFieldValue(page, [/返回日期/, /return date/i], h.FIXTURES.flightSearch.returnDate);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.7.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.7.2\n// fixtures: flight_search_home\n\ntest('REQ-3.2.7.2: Exception: Return Date Earlier Than Departure', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickFirstAvailable(page, [[/\\+\\s*添加返程/, /添加返程/, /add return/i]]);\n  await h.fillField(page, [/出发日期/, /departure date/i], h.FIXTURES.flightSearch.date);\n  await h.fillField(page, [/返回日期/, /return date/i], h.FIXTURES.flightSearch.earlierReturnDate);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectErrorFeedback(page, [/返程/, /return/i, /日期/, /date/i, /不能早于/, /earlier/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.3.1\n// fixtures: flight_search_home\n\ntest('REQ-3.3.1: Configure Special Passengers', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.setCheckbox(page, [/带儿童/, /child/i], true);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/儿童/, /child/i, /婴儿/, /infant/i, /特殊旅客/, /special passenger/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-3.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.3.2\n// fixtures: flight_search_home\n\ntest('REQ-3.3.2: Filter by Cabin Class', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.chooseOption(page, [/不限舱等/, /舱等/, /cabin/i], [/经济舱/, /economy/i]);\n  await h.expectVisible(page, [/经济舱/, /economy/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.4.1\n// fixtures: flight_search_home\n\ntest('REQ-3.4.1: Run a Standard Search', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.expectFlightResults(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.4.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.4.2\n// fixtures: flight_search_home, flight_search_history\n\ntest('REQ-3.4.2: Quickly Reuse Search History', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.clickFirstAvailable(page, [[/成都\\s*-\\s*广州/, /成都 - 广州/, /history/i]]);\n  await h.expectFlightResults(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.1.1\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.1.1: Modify Search Criteria', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.fillField(page, [/出发日期/, /departure date/i], h.FIXTURES.flightSearch.nearbyDate);\n  await h.chooseOption(page, [/舱等/, /cabin/i], [/经济舱/, /economy/i]);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i, /refresh/i]]);\n  await h.expectFlightResults(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.2.1\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.2.1: Switch to a Nearby Date', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/次日/, /附近日期/, /next day/i], [h.FIXTURES.flightSearch.nearbyDate]]);\n  await h.expectFlightResults(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.2.2\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.2.2: View More Dates', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/更多日期/, /view more dates/i, /calendar/i]]);\n  await h.expectAnyVisible(page, [[/月/, /calendar/i, /价格趋势/, /price trend/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.2.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.2.3\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.2.3: Switch to Next Week', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/下周/, /next week/i]]);\n  await h.expectFlightResults(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.3.1\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.3.1: Combined Filters', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickIfVisible(page, [/筛选/, /filter/i]);\n  await h.clickFirstAvailable(page, [[/直飞/, /nonstop/i]]);\n  await h.clickFirstAvailable(page, [[/南方航空/, /China Southern/i]]);\n  await h.expectAnyVisible(page, [[/直飞/, /nonstop/i], [/南方航空/, /China Southern/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.3.2\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.3.2: Sort by Price', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/价格/, /price/i]]);\n  await h.expectVisible(page, [/价格/, /price/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.3.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.3.3\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.3.3: Sort by On-Time Performance', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/准点率/, /on-time/i]]);\n  await h.expectVisible(page, [/准点率/, /on-time/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.3.4.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.3.4\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.3.4: Sort by Departure Time', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/起飞时间/, /departure time/i]]);\n  await h.expectVisible(page, [/起飞时间/, /departure time/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.4.1\n// fixtures: flight_search_home, flight_result_dataset\n\ntest('REQ-3.5.4.1: Expand/Collapse Flight Details', async ({ page }) => {\n  await h.openFlightResults(page);\n  await h.clickFirstAvailable(page, [[/展开/, /更多舱位/, /details/i]]);\n  await h.expectAnyVisible(page, [[/退改签/, /refund/i, /change/i], [/经济舱/, /premium economy/i, /fare/i]]);\n  await h.clickFirstAvailable(page, [[/收起/, /collapse/i]]);\n  await h.expectVisible(page, [/展开/, /details/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.4.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.4.2\n// fixtures: flight_search_home, flight_result_dataset, booking_page_dataset\n\ntest('REQ-3.5.4.2: Select a Fare and Book', async ({ page }) => {\n  await h.openBookingPage(page);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.4.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.4.3\n// fixtures: flight_search_home, flight_no_result_route\n\ntest('REQ-3.5.4.3: Exception: No Search Results', async ({ page }) => {\n  await h.openFlightSearch(page);\n  await h.fillField(page, [/出发城市/, /from/i], h.FIXTURES.flightSearch.noResultFrom);\n  await h.fillField(page, [/到达城市/, /to/i], h.FIXTURES.flightSearch.noResultTo);\n  await h.fillField(page, [/出发日期/, /departure date/i], h.FIXTURES.flightSearch.noResultDate);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/未找到相关航班/, /no flights/i], [/修改搜索条件/, /modify search/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.1.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.1.1: View Reminder Details', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/查看详情/, /details/i, /提醒/]]);\n  await h.expectAnyVisible(page, [[/充电宝/, /power bank/i], [/行李额/, /baggage/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.2.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.2.1: Quickly Select Passengers', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/常用旅客/, /quick select/i, /选择旅客/, /passenger/i]]);\n  await h.expectAnyVisible(page, [[/张三/, /李四/, /旅客/, /passenger/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.3.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.3.1: Enter ID Information (Normal Flow)', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.fillField(page, [/证件号码/, /ID number/i], h.FIXTURES.booking.validIdNumber);\n  await h.expectFieldValue(page, [/证件号码/, /ID number/i], h.FIXTURES.booking.validIdNumber);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.3.2\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.3.2: Exception: Invalid ID Number Format', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.fillField(page, [/证件号码/, /ID number/i], h.FIXTURES.booking.invalidIdNumber);\n  await h.clickIfVisible(page, [/联系人手机/, /mobile/i]);\n  await h.expectErrorFeedback(page, [/请输入正确的证件号码/, /invalid ID/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.4.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.4.1: Trigger Add Passenger', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/新增乘机人/, /add passenger/i, /添加乘机人/]]);\n  await h.expectAnyVisible(page, [[/乘机人/, /旅客/, /passenger/i], [/证件号码/, /ID number/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.5.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.5.1: Modify Contact Mobile Number', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.fillField(page, [/联系人手机/, /手机号/, /mobile/i], h.FIXTURES.booking.mobile);\n  await h.expectFieldValue(page, [/联系人手机/, /手机号/, /mobile/i], h.FIXTURES.booking.mobile);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1.6.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.1.6.1: Real-Time Fee Calculation', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/保险/, /insurance/i]]);\n  await h.expectAnyVisible(page, [[/订单总价/, /total/i], [/明细/, /details/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.1.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.1.1: Add Combo Insurance', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/保险套餐/, /insurance/i]]);\n  await h.expectAnyVisible(page, [[/已选/, /selected/i], [/订单总价/, /total/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.1.2\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.1.2: View Insurance Terms', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/保险条款/, /terms/i, /coverage/i]]);\n  await h.expectAnyVisible(page, [[/保障范围/, /coverage/i], [/理赔/, /claim/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.2.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.2.1: View Free Baggage Allowance', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.expectAnyVisible(page, [[/免费携带/, /baggage/i, /KG/]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.2.2\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.2.2: Purchase Extra Baggage Allowance', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/额外行李额/, /extra baggage/i, /购买/]]);\n  await h.expectAnyVisible(page, [[/订单总价/, /total/i], [/行李额/, /baggage/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.3.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.3.1: Reserve an Airport Drop-Off Service', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/接送机/, /drop-off/i, /airport transfer/i]]);\n  await h.expectAnyVisible(page, [[/预计/, /estimate/i, /¥/], [/订单总价/, /total/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.4.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.4.1: Purchase Lounge Service', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickFirstAvailable(page, [[/休息室/, /lounge/i, /贵宾/]]);\n  await h.expectAnyVisible(page, [[/订单总价/, /total/i], [/休息室/, /lounge/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.5.1\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.5.1: Linked Pricing for Value-Added Services', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickIfVisible(page, [/保险/, /insurance/i]);\n  await h.clickIfVisible(page, [/额外行李额/, /extra baggage/i]);\n  await h.clickFirstAvailable(page, [[/明细/, /details/i]]);\n  await h.expectAnyVisible(page, [[/订单总价/, /total/i], [/保险/, /行李/, /baggage/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.5.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2.5.2\n// fixtures: booking_page_dataset\n\ntest('REQ-4.2.5.2: Auto Deduction When Removing Services', async ({ page }) => {\n  await h.openBookingPage(page);\n  await h.clickIfVisible(page, [/保险/, /insurance/i]);\n  await h.clickIfVisible(page, [/移除/, /remove/i, /取消/]);\n  await h.expectAnyVisible(page, [[/订单总价/, /total/i], [/明细/, /details/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.3.1\n// fixtures: booking_page_dataset, payment_pending_flight\n\ntest('REQ-4.3.1: Payment Countdown Reminder', async ({ page }) => {\n  await h.openPaymentPage(page, h.FIXTURES.flightSearch.paymentPending);\n  await h.expectPaymentPage(page);\n});\n"
+        },
+        {
+            "path": "REQ-4.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.3.2\n// fixtures: booking_page_dataset, payment_success_flight\n\ntest('REQ-4.3.2: Select Payment Method', async ({ page }) => {\n  await h.openPaymentPage(page, h.FIXTURES.flightSearch.paymentSuccess);\n  await h.clickFirstAvailable(page, [[/支付宝/, /微信/, /银行卡/, /Alipay/i, /WeChat/i, /bank/i]]);\n  await h.clickFirstAvailable(page, [[/支付/, /pay/i, /立即支付/]]);\n  await h.expectAnyVisible(page, [[/成功/, /支付成功/, /success/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.1\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.1: Enter Order Center', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.expectAnyVisible(page, [[/订单/, /orders/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.2.1\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.2.1: Switch to Pending Payment', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/待支付/, /pending payment/i]]);\n  await h.expectAnyVisible(page, [[/待支付/, /pending payment/i], [/去支付/, /pay/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.2.2\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.2.2: Switch to Not Traveled', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/未出行/, /not traveled/i]]);\n  await h.expectAnyVisible(page, [[/未出行/, /not traveled/i], [/暂时没有相关订单/, /no relevant orders/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.2.3.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.2.3\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.2.3: Switch to Pending Review', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/待点评/, /pending review/i]]);\n  await h.expectAnyVisible(page, [[/待点评/, /pending review/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.2.4.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.2.4\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.2.4: Switch to All Orders', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/全部订单/, /all orders/i]]);\n  await h.expectAnyVisible(page, [[/全部订单/, /all orders/i], [/订单号/, /order number/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.3.1\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.3.1: Search Historical Orders', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.fillField(page, [/订单号/, /订单搜索/, /order/i], h.FIXTURES.booking.orderNumber);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectVisible(page, h.FIXTURES.booking.orderNumber);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4.4.1\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.4.4.1: View Order Details', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/查看详情/, /订单详情/, /details/i]]);\n  await h.expectAnyVisible(page, [[/订单详情/, /order details/i], [/订单号/, /order number/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.1.1\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.5.1.1: Pending Payment Countdown', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/待支付/, /pending payment/i]]);\n  await h.clickFirstAvailable(page, [[/查看详情/, /订单详情/, /details/i]]);\n  await h.expectAnyVisible(page, [[/建议在/, /complete payment/i], [/剩余时间/, /countdown/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.1.2\n// fixtures: order_cancel_account, cancellation_order\n\ntest('REQ-4.5.1.2: Cancel a Pending Payment Order', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderCancel);\n  await h.clickFirstAvailable(page, [[/待支付/, /pending payment/i]]);\n  await h.clickFirstAvailable(page, [[/取消订单/, /cancel order/i, /取消/]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/已关闭/, /cancelled/i, /closed/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.2.1\n// fixtures: order_read_account, order_read_dataset\n\ntest('REQ-4.5.2.1: View Refund/Change Rules', async ({ page }) => {\n  await h.openOrderCenter(page, h.FIXTURES.accounts.orderRead);\n  await h.clickFirstAvailable(page, [[/查看详情/, /订单详情/, /details/i]]);\n  await h.clickFirstAvailable(page, [[/退改签规则/, /refund/i, /change/i]]);\n  await h.expectAnyVisible(page, [[/退票/, /refund/i], [/改签/, /change/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.1\n// fixtures: personal_read_account\n\ntest('REQ-5.1: Enter Personal Center', async ({ page }) => {\n  await h.openPersonalCenter(page, h.FIXTURES.accounts.personalRead);\n  await h.expectPersonalCenter(page);\n});\n"
+        },
+        {
+            "path": "REQ-5.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.2\n// fixtures: personal_read_account\n\ntest('REQ-5.2: Expand/Collapse Common Information', async ({ page }) => {\n  await h.expandCommonInformation(page, h.FIXTURES.accounts.personalRead);\n  await h.expectAnyVisible(page, [[/常用旅客信息/, /traveler/i], [/常用联系人/, /contact/i], [/常用报销凭证/, /invoice/i], [/常用地址/, /address/i]]);\n  await h.clickFirstAvailable(page, [[/常用信息/, /common information/i]]);\n  await h.expectVisible(page, [/常用信息/, /common information/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.1.1\n// fixtures: personal_read_account, traveler_read_dataset\n\ntest('REQ-5.3.1.1: Search for a Traveler', async ({ page }) => {\n  await h.openTravelerManager(page, h.FIXTURES.accounts.personalRead);\n  await h.fillField(page, [/旅客/, /姓名/, /traveler/i, /name/i], h.FIXTURES.booking.secondTravelerName);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectVisible(page, h.FIXTURES.booking.secondTravelerName);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.1.2\n// fixtures: personal_read_account, traveler_read_dataset\n\ntest('REQ-5.3.1.2: No Matching Traveler Found', async ({ page }) => {\n  await h.openTravelerManager(page, h.FIXTURES.accounts.personalRead);\n  await h.fillField(page, [/旅客/, /姓名/, /traveler/i, /name/i], '不存在用户');\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/未找到/, /no matching/i, /无结果/]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.2.1\n// fixtures: traveler_create_account\n\ntest('REQ-5.3.2.1: Create a New Traveler', async ({ page }) => {\n  await h.openTravelerManager(page, h.FIXTURES.accounts.travelerCreate);\n  await h.clickFirstAvailable(page, [[/新增/, /add/i, /新建/]]);\n  await h.fillField(page, [/中文名/, /姓名/, /name/i], h.FIXTURES.booking.travelerName);\n  await h.fillField(page, [/证件号码/, /ID number/i], h.FIXTURES.booking.validIdNumber);\n  await h.clickFirstAvailable(page, [[/保存/, /save/i]]);\n  await h.expectAnyVisible(page, [[/成功/, /saved/i, h.FIXTURES.booking.travelerName]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.2.2\n// fixtures: traveler_create_account\n\ntest('REQ-5.3.2.2: Exception: Required-Field Validation', async ({ page }) => {\n  await h.openTravelerManager(page, h.FIXTURES.accounts.travelerCreate);\n  await h.clickFirstAvailable(page, [[/新增/, /add/i, /新建/]]);\n  await h.clickFirstAvailable(page, [[/保存/, /save/i]]);\n  await h.expectErrorFeedback(page, [/中文名与英文名两者必填一项/, /required/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.3.1\n// fixtures: traveler_delete_account, traveler_delete_dataset\n\ntest('REQ-5.3.3.1: Delete a Traveler Record', async ({ page }) => {\n  await h.openTravelerManager(page, h.FIXTURES.accounts.travelerDelete);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.clickFirstAvailable(page, [[/删除/, /delete/i]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /removed/i, /deleted/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3.3.2\n// fixtures: traveler_batch_account, traveler_batch_dataset\n\ntest('REQ-5.3.3.2: Batch Delete', async ({ page }) => {\n  await h.openTravelerManager(page, h.FIXTURES.accounts.travelerBatch);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.setCheckbox(page, [/全选/, /select all/i], true);\n  await h.clickFirstAvailable(page, [[/批量删除/, /batch delete/i, /删除/]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /removed/i, /deleted/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4.1.1\n// fixtures: personal_read_account, address_read_dataset\n\ntest('REQ-5.4.1.1: View Address List', async ({ page }) => {\n  await h.openAddressManager(page, h.FIXTURES.accounts.personalRead);\n  await h.expectAnyVisible(page, [[/地址/, /address/i], [/上海/, /city/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4.2.1\n// fixtures: address_create_account\n\ntest('REQ-5.4.2.1: Save a New Address', async ({ page }) => {\n  await h.openAddressManager(page, h.FIXTURES.accounts.addressCreate);\n  await h.clickFirstAvailable(page, [[/新增/, /add/i, /新建/]]);\n  await h.fillField(page, [/收货人/, /consignee/i, /name/i], h.FIXTURES.address.consignee);\n  await h.fillField(page, [/城市/, /city/i], h.FIXTURES.address.city);\n  await h.fillField(page, [/详细地址/, /detail/i, /address/i], h.FIXTURES.address.detail);\n  await h.clickFirstAvailable(page, [[/保存/, /save/i]]);\n  await h.expectVisible(page, h.FIXTURES.address.detail);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4.3.1\n// fixtures: address_delete_account, address_delete_dataset\n\ntest('REQ-5.4.3.1: Delete a Single Address', async ({ page }) => {\n  await h.openAddressManager(page, h.FIXTURES.accounts.addressDelete);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.clickFirstAvailable(page, [[/删除/, /delete/i]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4.3.2\n// fixtures: address_batch_account, address_batch_dataset\n\ntest('REQ-5.4.3.2: Batch Delete Addresses', async ({ page }) => {\n  await h.openAddressManager(page, h.FIXTURES.accounts.addressBatch);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.setCheckbox(page, [/全选/, /select all/i], true);\n  await h.clickFirstAvailable(page, [[/批量删除/, /batch delete/i, /删除/]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.1.1\n// fixtures: contact_search_account, contact_search_dataset\n\ntest('REQ-5.5.1.1: Search Contacts', async ({ page }) => {\n  await h.openContactManager(page, h.FIXTURES.accounts.contactSearch);\n  await h.fillField(page, [/联系人/, /姓名/, /contact/i, /name/i], h.FIXTURES.contact.name);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectVisible(page, h.FIXTURES.contact.name);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.1.2\n// fixtures: contact_batch_1_account, contact_batch_1_dataset\n\ntest('REQ-5.5.1.2: Batch Delete', async ({ page }) => {\n  await h.openContactManager(page, h.FIXTURES.accounts.contactBatch1);\n  await h.setCheckbox(page, [/全选/, /select all/i], true);\n  await h.clickFirstAvailable(page, [[/批量删除/, /batch delete/i, /删除/]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.2.1\n// fixtures: contact_create_account\n\ntest('REQ-5.5.2.1: Add a Default Contact', async ({ page }) => {\n  await h.openContactManager(page, h.FIXTURES.accounts.contactCreate);\n  await h.clickFirstAvailable(page, [[/新增/, /add/i, /新建/]]);\n  await h.fillField(page, [/联系人/, /姓名/, /contact/i, /name/i], h.FIXTURES.contact.name);\n  await h.fillField(page, [/手机号/, /mobile/i], h.FIXTURES.contact.mobile);\n  await h.setCheckbox(page, [/默认/, /default/i], true);\n  await h.clickFirstAvailable(page, [[/保存/, /save/i]]);\n  await h.expectAnyVisible(page, [[/默认/, /default/i], [h.FIXTURES.contact.name]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.3.1\n// fixtures: contact_delete_account, contact_delete_dataset\n\ntest('REQ-5.5.3.1: Delete a Single Contact', async ({ page }) => {\n  await h.openContactManager(page, h.FIXTURES.accounts.contactDelete);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.clickFirstAvailable(page, [[/删除/, /delete/i]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5.3.2\n// fixtures: contact_batch_2_account, contact_batch_2_dataset\n\ntest('REQ-5.5.3.2: Batch Delete Contacts', async ({ page }) => {\n  await h.openContactManager(page, h.FIXTURES.accounts.contactBatch2);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.setCheckbox(page, [/全选/, /select all/i], true);\n  await h.clickFirstAvailable(page, [[/批量删除/, /batch delete/i, /删除/]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6.1.1\n// fixtures: invoice_search_account, invoice_search_dataset\n\ntest('REQ-5.6.1.1: Search Invoice Titles', async ({ page }) => {\n  await h.openInvoiceManager(page, h.FIXTURES.accounts.invoiceSearch);\n  await h.fillField(page, [/抬头/, /invoice title/i, /company/i], h.FIXTURES.invoice.title);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectVisible(page, h.FIXTURES.invoice.title);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6.2.1\n// fixtures: invoice_create_account\n\ntest('REQ-5.6.2.1: Add a Company Invoice Title', async ({ page }) => {\n  await h.openInvoiceManager(page, h.FIXTURES.accounts.invoiceCreate);\n  await h.clickFirstAvailable(page, [[/新增/, /add/i, /新建/]]);\n  await h.fillField(page, [/抬头/, /invoice title/i, /company/i], h.FIXTURES.invoice.title);\n  await h.fillField(page, [/税号/, /tax/i], h.FIXTURES.invoice.taxId);\n  await h.clickFirstAvailable(page, [[/保存/, /save/i]]);\n  await h.expectAnyVisible(page, [[h.FIXTURES.invoice.title], [/税号/, /tax/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6.2.2\n// fixtures: invoice_create_account\n\ntest('REQ-5.6.2.2: Configure Special VAT Invoice', async ({ page }) => {\n  await h.openInvoiceManager(page, h.FIXTURES.accounts.invoiceCreate);\n  await h.clickFirstAvailable(page, [[/新增/, /add/i, /新建/]]);\n  await h.setCheckbox(page, [/增值税专票/, /VAT/i], true);\n  await h.expectAnyVisible(page, [[/注册地址/, /address/i], [/电话/, /phone/i], [/开户银行/, /bank/i], [/银行账号/, /account/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6.3.1\n// fixtures: invoice_delete_account, invoice_delete_dataset\n\ntest('REQ-5.6.3.1: Delete a Single Receipt', async ({ page }) => {\n  await h.openInvoiceManager(page, h.FIXTURES.accounts.invoiceDelete);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.clickFirstAvailable(page, [[/删除/, /delete/i]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6.3.2\n// fixtures: invoice_batch_account, invoice_batch_dataset\n\ntest('REQ-5.6.3.2: Batch Delete Receipts', async ({ page }) => {\n  await h.openInvoiceManager(page, h.FIXTURES.accounts.invoiceBatch);\n  const deleteCount = await h.countVisibleNamed(page, /^(删除|delete)$/i);\n  await h.setCheckbox(page, [/全选/, /select all/i], true);\n  await h.clickFirstAvailable(page, [[/批量删除/, /batch delete/i, /删除/]]);\n  await h.confirmDialog(page);\n  await h.expectAnyVisible(page, [[/成功/, /deleted/i, /removed/i]]);\n  await h.expectFewerVisibleNamed(page, /^(删除|delete)$/i, deleteCount);\n});\n"
+        },
+        {
+            "path": "REQ-6.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.1.1\n// fixtures: profile_read_account, profile_read_dataset\n\ntest('REQ-6.1.1: View Basic Profile Information', async ({ page }) => {\n  await h.openProfileOverview(page, h.FIXTURES.accounts.profileRead);\n  await h.expectAnyVisible(page, [[/手机号/, /mobile/i], [/邮箱/, /email/i], [/\\*\\*\\*|\\*\\*\\*\\*/, /masked/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-6.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.2.1\n// fixtures: profile_edit_account, profile_edit_dataset\n\ntest('REQ-6.2.1: Update Profile and Save', async ({ page }) => {\n  await h.openProfileOverview(page, h.FIXTURES.accounts.profileEdit);\n  await h.clickFirstAvailable(page, [[/编辑/, /edit/i]]);\n  await h.fillField(page, [/昵称/, /姓名/, /name/i], h.FIXTURES.profile.updatedDisplayName);\n  await h.clickFirstAvailable(page, [[/保存/, /save/i]]);\n  await h.expectAnyVisible(page, [[/成功/, /saved/i], [h.FIXTURES.profile.updatedDisplayName]]);\n});\n"
+        },
+        {
+            "path": "REQ-6.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.3.1\n// fixtures: profile_read_account, security_read_dataset\n\ntest('REQ-6.3.1: Enter Security Center', async ({ page }) => {\n  await h.openSecurityCenter(page, h.FIXTURES.accounts.profileRead);\n  await h.expectAnyVisible(page, [[/建议定期更换/, /regularly/i], [/登录密码/, /password/i], [/手机号/, /phone/i], [/邮箱/, /email/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-6.4.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.4.1\n// fixtures: password_change_account, security_password_dataset\n\ntest('REQ-6.4.1: Standard Password Change Flow', async ({ page }) => {\n  await h.openSecurityCenter(page, h.FIXTURES.accounts.passwordChange);\n  await h.clickFirstAvailable(page, [[/修改密码/, /change password/i, /登录密码/]]);\n  await h.expectAnyVisible(page, [[/弱|中|强/, /weak|medium|strong/i]]);\n  await h.fillField(page, [/原密码/, /current password/i], h.FIXTURES.accounts.passwordChange.password);\n  await h.fillField(page, [/新密码/, /new password/i], h.FIXTURES.auth.newPassword);\n  await h.fillField(page, [/确认密码/, /confirm/i], h.FIXTURES.auth.newPassword);\n  await h.clickFirstAvailable(page, [[/保存/, /确认/, /save/i, /confirm/i]]);\n  await h.expectAnyVisible(page, [[/重新登录/, /re-login/i, /登录/]]);\n});\n"
+        },
+        {
+            "path": "REQ-6.5.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.5.1\n// fixtures: phone_binding_account, phone_binding_state\n\ntest('REQ-6.5.1: Verify Identity and Bind New Phone', async ({ page }) => {\n  await h.openSecurityCenter(page, h.FIXTURES.accounts.phoneBinding);\n  await h.clickFirstAvailable(page, [[/手机号/, /phone/i, /修改/]]);\n  await h.expectAnyVisible(page, [[/验证身份/, /verify identity/i]]);\n  await h.fillField(page, [/新手机号/, /new phone/i], h.FIXTURES.profile.newPhone);\n  await h.clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await h.expectAnyVisible(page, [[/验证码/, /verification code/i], [/下一步/, /next/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-6.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.6.1\n// fixtures: email_binding_account, email_binding_state, email_binding_verification_code\n\ntest('REQ-6.6.1: Email Verification Flow', async ({ page }) => {\n  await h.openSecurityCenter(page, h.FIXTURES.accounts.emailBinding);\n  await h.clickFirstAvailable(page, [[/邮箱/, /email/i, /修改/]]);\n  await h.expectAnyVisible(page, [[/\\*\\*\\*|\\*\\*\\*\\*/, /masked/i], [/发送验证码/, /send code/i]]);\n  await h.fillField(page, [/验证码/, /verification code/i], h.FIXTURES.accounts.emailBinding.verificationCode);\n  await h.clickFirstAvailable(page, [[/下一步/, /验证新邮箱/, /next/i]]);\n  await h.expectAnyVisible(page, [[/新邮箱/, /new email/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.1\n// fixtures: flight_status_dataset\n\ntest('REQ-7.1: Enter Flight Status Page', async ({ page }) => {\n  await h.openFlightStatusPage(page);\n  await h.expectAnyVisible(page, [[/航班动态/, /flight status/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.2.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2.1.1\n// fixtures: flight_status_dataset\n\ntest('REQ-7.2.1.1: Exact Flight Number Query', async ({ page }) => {\n  await h.openFlightStatusPage(page);\n  await h.setRadio(page, [/航班号/, /flight number/i]);\n  await h.expectAnyVisible(page, [[/航班号/, /flight number/i], [/日期/, /date/i]]);\n  await h.fillField(page, [/航班号/, /flight number/i], h.FIXTURES.flightSearch.flightNumber);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/JD5162/], [/值机柜台/, /check-in/i, /登机口/, /gate/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.2.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2.2.1\n// fixtures: flight_status_dataset\n\ntest('REQ-7.2.2.1: Route Range Query', async ({ page }) => {\n  await h.openFlightStatusPage(page);\n  await h.setRadio(page, [/起降地/, /route/i]);\n  await h.fillField(page, [/出发城市/, /from/i], '上海');\n  await h.fillField(page, [/到达城市/, /to/i], '北京');\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/航空公司/, /airline/i], [/航班号/, /flight number/i], [/状态/, /status/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.2.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2.2.2\n// fixtures: flight_status_dataset\n\ntest('REQ-7.2.2.2: Swap Origin and Destination', async ({ page }) => {\n  await h.openFlightStatusPage(page);\n  await h.setRadio(page, [/起降地/, /route/i]);\n  await h.fillField(page, [/出发城市/, /from/i], '上海');\n  await h.fillField(page, [/到达城市/, /to/i], '北京');\n  await h.clickFirstAvailable(page, [[/双向箭头/, /swap/i]]);\n  await h.expectFieldValue(page, [/出发城市/, /from/i], '北京');\n  await h.expectFieldValue(page, [/到达城市/, /to/i], '上海');\n});\n"
+        },
+        {
+            "path": "REQ-7.2.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2.3.1\n// fixtures: flight_status_history_use, flight_status_dataset\n\ntest('REQ-7.2.3.1: Use History', async ({ page }) => {\n  await h.openFlightStatusPage(page, h.FIXTURES.flightStatus.historyUse);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.flightStatus.historyUse.entry]]);\n  await h.expectAnyVisible(page, [[h.FIXTURES.flightStatus.historyUse.entry], [/值机柜台/, /check-in/i, /登机口/, /gate/i, /航空公司/, /airline/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.2.3.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2.3.2\n// fixtures: flight_status_history_clear, flight_status_dataset\n\ntest('REQ-7.2.3.2: Clear History', async ({ page }) => {\n  await h.openFlightStatusPage(page, h.FIXTURES.flightStatus.historyClear);\n  await h.clickFirstAvailable(page, [[/清除历史/, /clear history/i]]);\n  await h.expectAnyVisible(page, [[/无历史记录/, /history cleared/i, /暂无/]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.3.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.3.1.1\n// fixtures: flight_status_dataset\n\ntest('REQ-7.3.1.1: View Flight Status in List', async ({ page }) => {\n  await h.openFlightStatusPage(page);\n  await h.setRadio(page, [/起降地/, /route/i]);\n  await h.fillField(page, [/出发城市/, /from/i], '上海');\n  await h.fillField(page, [/到达城市/, /to/i], '北京');\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/航空公司/, /airline/i], [/航班号/, /flight number/i], [/计划起飞|航班到达/, /status/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-7.3.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.3.2.1\n// fixtures: flight_status_dataset\n\ntest('REQ-7.3.2.1: View Detailed Status', async ({ page }) => {\n  await h.openFlightStatusPage(page);\n  await h.setRadio(page, [/航班号/, /flight number/i]);\n  await h.fillField(page, [/航班号/, /flight number/i], h.FIXTURES.flightSearch.flightNumber);\n  await h.clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n  await h.expectAnyVisible(page, [[/出发/, /到达/, /progress/i], [/值机柜台/, /check-in/i], [/登机口/, /gate/i], [/行李转盘/, /baggage/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-8.1.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.1.1.1\n// fixtures: voucher_read_account, reimbursement_orders\n\ntest('REQ-8.1.1.1: Switch to Completed', async ({ page }) => {\n  await h.openVoucherHome(page, h.FIXTURES.accounts.voucherRead);\n  await h.clickFirstAvailable(page, [[/已完成/, /completed/i]]);\n  await h.expectAnyVisible(page, [[/已完成/, /completed/i], [/历史/, /history/i, /记录/, /records/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-8.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.2.1\n// fixtures: voucher_read_account, reimbursement_orders\n\ntest('REQ-8.2.1: View Eligible Orders', async ({ page }) => {\n  await h.openVoucherHome(page, h.FIXTURES.accounts.voucherRead);\n  await h.clickFirstAvailable(page, [[/待开具/, /pending/i]]);\n  await h.expectAnyVisible(page, [[/您暂无报销凭证可开具/, /no voucher/i], [/订单/, /order/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-8.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.2.2\n// fixtures: voucher_read_account, reimbursement_orders\n\ntest('REQ-8.2.2: Find More Historical Orders', async ({ page }) => {\n  await h.openVoucherHome(page, h.FIXTURES.accounts.voucherRead);\n  await h.clickFirstAvailable(page, [[/查看更多一年内订单/, /more historical orders/i, /更多/]]);\n  await h.expectAnyVisible(page, [[/一年内/, /one year/i], [/订单/, /order/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.1: Enter Airport Guide', async ({ page }) => {\n  await h.openAirportGuide(page);\n  await h.expectAnyVisible(page, [[/机场攻略/, /airport guide/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.2.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.2.1.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.2.1.1: Browse Popular Airports', async ({ page }) => {\n  await h.openAirportGuide(page);\n  await h.expectAnyVisible(page, [[/北京首都/], [/上海浦东/], [/广州白云/]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.2.1.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.2.1.2\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.2.1.2: Find via Alphabet Index', async ({ page }) => {\n  await h.openAirportGuide(page);\n  await h.clickFirstAvailable(page, [[/C/]]);\n  await h.expectAnyVisible(page, [[/成都/], [/重庆/], [/长春/]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.2.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.2.2.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.2.2.1: View Travel Weather', async ({ page }) => {\n  await h.openAirportGuide(page);\n  await h.expectAnyVisible(page, [[/今日天气/, /weather/i], [/乘机流程/, /travel process/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.3.1.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.3.1.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.3.1.1: View Airport Overview', async ({ page }) => {\n  await h.openAirportDetail(page);\n  await h.clickFirstAvailable(page, [[/机场简介/, /overview/i]]);\n  await h.expectAnyVisible(page, [[/中国第一国门/, /overview/i, /跑道/, /runway/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.3.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.3.2.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.3.2.1: Check Shuttle Bus Timetable', async ({ page }) => {\n  await h.openAirportDetail(page);\n  await h.clickFirstAvailable(page, [[/机场交通/, /transportation/i]]);\n  await h.expectAnyVisible(page, [[/市内巴士/, /shuttle/i, /line/i], [/首班/, /末班/, /first/i, /last/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-9.3.3.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-9.3.3.1\n// fixtures: airport_guide_catalog, airport_detail_dataset\n\ntest('REQ-9.3.3.1: Find First Aid Phone Number', async ({ page }) => {\n  await h.openAirportDetail(page);\n  await h.clickFirstAvailable(page, [[/机场电话/, /phone/i]]);\n  await h.expectAnyVisible(page, [[/急救/, /first aid/i], [/010-/, /phone/i]]);\n});\n"
+        },
+        {
+            "path": "helpers.ts",
+            "content": "import { expect, Locator, Page } from '@playwright/test';\n\ntype MatchInput = string | RegExp | Array<string | RegExp>;\ntype Scope = Page | Locator;\n\nexport type AccountFixture = {\n  email: string;\n  mobile: string;\n  password: string;\n};\n\nexport type FlightSearchFixture = {\n  from: string;\n  to: string;\n  date: string;\n};\n\nexport type RegistrationFixture = {\n  mobile: string;\n  code: string;\n  password: string;\n  weakPassword?: string;\n};\n\nexport type FlightStatusHistoryFixture = {\n  entry: string;\n};\n\nexport const FIXTURES = {\n  testDate: '2026-07-19T12:00:00+08:00',\n  auth: {\n    newPassword: 'Travel5678',\n  },\n  registration: {\n    verification: {\n      mobile: '13800000044',\n      code: '123456',\n      password: 'Travel1234',\n    },\n    success: {\n      mobile: '13800000045',\n      code: '123456',\n      password: 'Travel1234',\n    },\n    mismatch: {\n      mobile: '13800000046',\n      code: '123456',\n      password: 'Travel1234',\n    },\n    weak: {\n      mobile: '13800000047',\n      code: '123456',\n      password: 'Travel1234',\n      weakPassword: '1234567',\n    },\n  },\n  flightSearch: {\n    from: '成都',\n    fromFilled: '成都(CTU)',\n    to: '广州',\n    toFilled: '广州(CAN)',\n    sameCity: '成都',\n    date: '2026-07-21',\n    nearbyDate: '2026-07-22',\n    returnDate: '2026-07-25',\n    earlierReturnDate: '2026-07-20',\n    noResultFrom: '北海',\n    noResultTo: '火星城',\n    noResultDate: '2026-07-23',\n    historyLabel: '成都 - 广州',\n    flightNumber: 'JD5162',\n    paymentPending: {\n      from: '成都',\n      to: '广州',\n      date: '2026-07-21',\n    },\n    paymentSuccess: {\n      from: '成都',\n      to: '广州',\n      date: '2026-07-22',\n    },\n  },\n  flightStatus: {\n    historyUse: {\n      entry: 'JD5162',\n    },\n    historyClear: {\n      entry: 'MU5234',\n    },\n  },\n  booking: {\n    travelerName: '张三',\n    secondTravelerName: '李四',\n    validIdNumber: '110101199001011234',\n    invalidIdNumber: '123',\n    mobile: '13800000014',\n    orderNumber: 'CTRIP20260721001',\n  },\n  profile: {\n    displayName: '携程用户',\n    updatedDisplayName: '携程用户已更新',\n    maskedMobile: '138****0019',\n    maskedEmail: 'pro***@example.com',\n    newPhone: '13800000020',\n    newEmail: 'profile_user_next@example.com',\n  },\n  address: {\n    consignee: '张三',\n    city: '上海',\n    district: '浦东新区',\n    detail: '世纪大道100号',\n  },\n  contact: {\n    name: '张三',\n    secondName: '李四',\n    mobile: '13800000017',\n  },\n  invoice: {\n    title: '上海示例科技有限公司',\n    taxId: '91310000123456789A',\n    address: '上海市浦东新区示例路8号',\n    phone: '021-12345678',\n    bank: '中国银行上海分行',\n    bankAccount: '6222000000000000000',\n  },\n  airport: {\n    popular: ['北京首都', '上海浦东', '广州白云'],\n    domesticAnchor: '国内机场',\n    internationalAnchor: '国际/中国港澳台地区',\n  },\n  accounts: {\n    passwordLogin: {\n      email: 'ctrip_user@example.com',\n      mobile: '13800000010',\n      password: 'Travel1234',\n    },\n    smsLogin: {\n      email: 'ctrip_sms_user@example.com',\n      mobile: '13800000011',\n      password: 'Travel1234',\n      verificationCode: '123456',\n    },\n    smsMissingCode: {\n      email: 'ctrip_sms_missing_code@example.com',\n      mobile: '13800000041',\n      password: 'Travel1234',\n      verificationCode: '123456',\n    },\n    smsIncorrectCode: {\n      email: 'ctrip_sms_incorrect_code@example.com',\n      mobile: '13800000042',\n      password: 'Travel1234',\n      verificationCode: '123456',\n    },\n    smsAgreement: {\n      email: 'ctrip_sms_agreement@example.com',\n      mobile: '13800000043',\n      password: 'Travel1234',\n      verificationCode: '123456',\n    },\n    profileRead: {\n      email: 'ctrip_profile_read@example.com',\n      mobile: '13800000013',\n      password: 'Travel1234',\n    },\n    profileEdit: {\n      email: 'ctrip_profile_edit@example.com',\n      mobile: '13800000015',\n      password: 'Travel1234',\n    },\n    passwordChange: {\n      email: 'ctrip_password_change@example.com',\n      mobile: '13800000016',\n      password: 'Travel1234',\n    },\n    phoneBinding: {\n      email: 'ctrip_phone_binding@example.com',\n      mobile: '13800000018',\n      password: 'Travel1234',\n    },\n    emailBinding: {\n      email: 'ctrip_email_binding@example.com',\n      mobile: '13800000019',\n      password: 'Travel1234',\n      verificationCode: '123456',\n    },\n    orderRead: {\n      email: 'ctrip_order_read@example.com',\n      mobile: '13800000021',\n      password: 'Travel1234',\n    },\n    orderCancel: {\n      email: 'ctrip_order_cancel@example.com',\n      mobile: '13800000022',\n      password: 'Travel1234',\n    },\n    personalRead: {\n      email: 'ctrip_personal_read@example.com',\n      mobile: '13800000023',\n      password: 'Travel1234',\n    },\n    travelerCreate: {\n      email: 'ctrip_traveler_create@example.com',\n      mobile: '13800000024',\n      password: 'Travel1234',\n    },\n    travelerDelete: {\n      email: 'ctrip_traveler_delete@example.com',\n      mobile: '13800000025',\n      password: 'Travel1234',\n    },\n    travelerBatch: {\n      email: 'ctrip_traveler_batch@example.com',\n      mobile: '13800000026',\n      password: 'Travel1234',\n    },\n    addressCreate: {\n      email: 'ctrip_address_create@example.com',\n      mobile: '13800000027',\n      password: 'Travel1234',\n    },\n    addressDelete: {\n      email: 'ctrip_address_delete@example.com',\n      mobile: '13800000028',\n      password: 'Travel1234',\n    },\n    addressBatch: {\n      email: 'ctrip_address_batch@example.com',\n      mobile: '13800000029',\n      password: 'Travel1234',\n    },\n    contactSearch: {\n      email: 'ctrip_contact_search@example.com',\n      mobile: '13800000030',\n      password: 'Travel1234',\n    },\n    contactBatch1: {\n      email: 'ctrip_contact_batch_1@example.com',\n      mobile: '13800000031',\n      password: 'Travel1234',\n    },\n    contactCreate: {\n      email: 'ctrip_contact_create@example.com',\n      mobile: '13800000032',\n      password: 'Travel1234',\n    },\n    contactDelete: {\n      email: 'ctrip_contact_delete@example.com',\n      mobile: '13800000033',\n      password: 'Travel1234',\n    },\n    contactBatch2: {\n      email: 'ctrip_contact_batch_2@example.com',\n      mobile: '13800000034',\n      password: 'Travel1234',\n    },\n    invoiceSearch: {\n      email: 'ctrip_invoice_search@example.com',\n      mobile: '13800000035',\n      password: 'Travel1234',\n    },\n    invoiceCreate: {\n      email: 'ctrip_invoice_create@example.com',\n      mobile: '13800000036',\n      password: 'Travel1234',\n    },\n    invoiceDelete: {\n      email: 'ctrip_invoice_delete@example.com',\n      mobile: '13800000037',\n      password: 'Travel1234',\n    },\n    invoiceBatch: {\n      email: 'ctrip_invoice_batch@example.com',\n      mobile: '13800000038',\n      password: 'Travel1234',\n    },\n    voucherRead: {\n      email: 'ctrip_voucher_read@example.com',\n      mobile: '13800000039',\n      password: 'Travel1234',\n    },\n  },\n} as const;\n\nfunction escapeRegExp(text: string): string {\n  return text.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n}\n\nfunction toPatterns(value: MatchInput): RegExp[] {\n  const values = Array.isArray(value) ? value : [value];\n  return values.map((item) => {\n    if (item instanceof RegExp) return item;\n    return new RegExp(escapeRegExp(item).replace(/\\s+/g, '\\\\s+'), 'i');\n  });\n}\n\nfunction target(scope: Scope): any {\n  return scope as any;\n}\n\nasync function firstVisible(locators: Locator[]): Promise<Locator> {\n  for (const locator of locators) {\n    const candidate = locator.first();\n    try {\n      if (await candidate.isVisible({ timeout: 500 })) return candidate;\n    } catch {\n      // continue\n    }\n  }\n  for (const locator of locators) {\n    const candidate = locator.first();\n    try {\n      if (await candidate.count()) return candidate;\n    } catch {\n      // continue\n    }\n  }\n  return locators[0].first();\n}\n\nfunction namedLocators(scope: Scope, pattern: RegExp): Locator[] {\n  const t = target(scope);\n  return [\n    t.getByRole('button', { name: pattern }),\n    t.getByRole('link', { name: pattern }),\n    t.getByRole('tab', { name: pattern }),\n    t.getByRole('menuitem', { name: pattern }),\n    t.getByRole('option', { name: pattern }),\n    t.getByRole('radio', { name: pattern }),\n    t.getByRole('checkbox', { name: pattern }),\n    t.getByRole('heading', { name: pattern }),\n    t.getByText(pattern),\n  ];\n}\n\nfunction fieldLocators(scope: Scope, pattern: RegExp): Locator[] {\n  const t = target(scope);\n  return [\n    t.getByLabel(pattern),\n    t.getByPlaceholder(pattern),\n    t.getByRole('textbox', { name: pattern }),\n    t.getByRole('searchbox', { name: pattern }),\n    t.getByRole('combobox', { name: pattern }),\n    t.getByRole('spinbutton', { name: pattern }),\n  ];\n}\n\nasync function resolveNamed(scope: Scope, value: MatchInput): Promise<Locator> {\n  const patterns = toPatterns(value);\n  for (const pattern of patterns) {\n    const locator = await firstVisible(namedLocators(scope, pattern));\n    try {\n      if (await locator.isVisible({ timeout: 200 })) return locator;\n    } catch {\n      // continue\n    }\n  }\n  return firstVisible(namedLocators(scope, patterns[0]));\n}\n\nasync function resolveField(scope: Scope, value: MatchInput): Promise<Locator> {\n  const patterns = toPatterns(value);\n  for (const pattern of patterns) {\n    const locator = await firstVisible(fieldLocators(scope, pattern));\n    try {\n      if (await locator.isVisible({ timeout: 200 })) return locator;\n    } catch {\n      // continue\n    }\n  }\n  return firstVisible(fieldLocators(scope, patterns[0]));\n}\n\nexport async function isVisible(scope: Scope, value: MatchInput): Promise<boolean> {\n  try {\n    const locator = await resolveNamed(scope, value);\n    return await locator.isVisible({ timeout: 300 });\n  } catch {\n    return false;\n  }\n}\n\nexport async function openHome(page: Page): Promise<void> {\n  await page.clock.setFixedTime(FIXTURES.testDate);\n  await page.goto('/');\n}\n\nexport async function clickNamed(scope: Scope, value: MatchInput): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  await locator.click();\n}\n\nexport async function clickIfVisible(scope: Scope, value: MatchInput): Promise<boolean> {\n  try {\n    const locator = await resolveNamed(scope, value);\n    if (await locator.isVisible({ timeout: 300 })) {\n      await locator.click();\n      return true;\n    }\n  } catch {\n    // ignore\n  }\n  return false;\n}\n\nexport async function clickFirstAvailable(scope: Scope, values: MatchInput[]): Promise<void> {\n  for (const value of values) {\n    if (await clickIfVisible(scope, value)) return;\n  }\n  await clickNamed(scope, values[0]);\n}\n\nexport async function hoverIfVisible(scope: Scope, value: MatchInput): Promise<boolean> {\n  try {\n    const locator = await resolveNamed(scope, value);\n    if (await locator.isVisible({ timeout: 300 })) {\n      await locator.hover();\n      return true;\n    }\n  } catch {\n    // ignore\n  }\n  return false;\n}\n\nexport async function expectVisible(scope: Scope, value: MatchInput): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  await expect(locator).toBeVisible();\n}\n\nexport async function expectAnyVisible(scope: Scope, values: MatchInput[]): Promise<void> {\n  for (const value of values) {\n    await expectVisible(scope, value);\n  }\n}\n\nexport async function fillField(scope: Scope, labelOrPlaceholder: MatchInput, value: string): Promise<void> {\n  const locator = await resolveField(scope, labelOrPlaceholder);\n  await locator.fill(value);\n}\n\nexport async function clickField(scope: Scope, labelOrPlaceholder: MatchInput): Promise<void> {\n  const locator = await resolveField(scope, labelOrPlaceholder);\n  await locator.click();\n}\n\nexport async function countVisibleNamed(scope: Scope, value: MatchInput): Promise<number> {\n  let count = 0;\n  for (const pattern of toPatterns(value)) {\n    for (const locator of namedLocators(scope, pattern).slice(0, 2)) {\n      for (let index = 0; index < await locator.count(); index += 1) {\n        if (await locator.nth(index).isVisible()) count += 1;\n      }\n    }\n  }\n  return count;\n}\n\nexport async function expectFewerVisibleNamed(\n  scope: Scope,\n  value: MatchInput,\n  previousCount: number,\n): Promise<void> {\n  await expect.poll(() => countVisibleNamed(scope, value)).toBeLessThan(previousCount);\n}\n\nexport async function expectPastDepartureDateDisabled(page: Page): Promise<void> {\n  const pastDate = await firstVisible([\n    page.getByRole('button', { name: /(^|\\D)18(\\D|$)/ }),\n  ]);\n  await expect(pastDate).toBeVisible();\n  await expect(pastDate).toBeDisabled();\n}\n\nexport async function setCheckbox(scope: Scope, value: MatchInput, checked: boolean): Promise<void> {\n  const patterns = toPatterns(value);\n  for (const pattern of patterns) {\n    const locator = await firstVisible([\n      target(scope).getByRole('checkbox', { name: pattern }),\n      target(scope).getByLabel(pattern),\n    ]);\n    try {\n      if (await locator.isVisible({ timeout: 300 })) {\n        if (checked) {\n          await locator.check();\n        } else {\n          await locator.uncheck();\n        }\n        return;\n      }\n    } catch {\n      // continue\n    }\n  }\n  const locator = await firstVisible([\n    target(scope).getByRole('checkbox'),\n  ]);\n  if (checked) {\n    await locator.check();\n  } else {\n    await locator.uncheck();\n  }\n}\n\nexport async function setCheckboxIfVisible(scope: Scope, value: MatchInput, checked: boolean): Promise<boolean> {\n  try {\n    await setCheckbox(scope, value, checked);\n    return true;\n  } catch {\n    return false;\n  }\n}\n\nexport async function setRadio(scope: Scope, value: MatchInput): Promise<void> {\n  const patterns = toPatterns(value);\n  for (const pattern of patterns) {\n    const locator = await firstVisible([\n      target(scope).getByRole('radio', { name: pattern }),\n      target(scope).getByLabel(pattern),\n    ]);\n    try {\n      if (await locator.isVisible({ timeout: 300 })) {\n        await locator.check();\n        return;\n      }\n    } catch {\n      // continue\n    }\n  }\n  await clickNamed(scope, value);\n}\n\nexport async function chooseOption(scope: Scope, label: MatchInput, option: MatchInput): Promise<void> {\n  const field = await resolveField(scope, label);\n  try {\n    const optionValue = Array.isArray(option) ? option.find((value) => typeof value === 'string') : option;\n    if (typeof optionValue === 'string') {\n      await field.selectOption({ label: optionValue });\n      return;\n    }\n  } catch {\n    // fall back to popup selection\n  }\n  await field.click();\n  await clickNamed(scope, option);\n}\n\nexport async function expectFieldValue(scope: Scope, field: MatchInput, expected: MatchInput): Promise<void> {\n  const locator = await resolveField(scope, field);\n  const patterns = toPatterns(expected);\n  const value = await locator.inputValue();\n  if (!patterns.some((pattern) => pattern.test(value))) {\n    throw new Error(`Expected field value to match ${patterns.map((item) => item.source).join(', ')}, got: ${value}`);\n  }\n}\n\nexport async function expectTextValue(scope: Scope, expected: MatchInput): Promise<void> {\n  await expectVisible(scope, expected);\n}\n\nexport async function confirmDialog(page: Page): Promise<void> {\n  await clickFirstAvailable(page, [[/确定/, /确认/, /继续/], [/confirm/i], [/ok/i]]);\n}\n\nexport async function cancelDialog(page: Page): Promise<void> {\n  await clickFirstAvailable(page, [[/取消/, /关闭/, /不同意/], [/cancel/i], [/close/i]]);\n}\n\nexport async function expectSuccessFeedback(page: Page): Promise<void> {\n  await expectAnyVisible(page, [[/成功/, /已保存/, /已完成/], [/success/i, /saved/i, /completed/i]]);\n}\n\nexport async function expectErrorFeedback(page: Page, text: MatchInput): Promise<void> {\n  await expectVisible(page, text);\n}\n\nexport async function expectHome(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/登录/, /^login$/i, /sign in/i],\n    [/注册/, /register/i, /sign up/i],\n    [/搜索/, /^search$/i],\n  ]);\n}\n\nexport async function openLoginPage(page: Page): Promise<void> {\n  await openHome(page);\n  await clickFirstAvailable(page, [[/登录/, /^login$/i, /sign in/i]]);\n}\n\nexport async function expectPasswordLoginForm(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/邮箱.*用户名.*手机号/, /email.*username.*mobile/i, /account/i],\n    [/密码/, /password/i],\n    [/登录/, /^login$/i, /sign in/i],\n  ]);\n}\n\nexport async function ensurePasswordLogin(page: Page): Promise<void> {\n  await openLoginPage(page);\n  await clickIfVisible(page, [/账号登录/, /password login/i]);\n  await expectPasswordLoginForm(page);\n}\n\nexport async function ensureCodeLogin(page: Page): Promise<void> {\n  await openLoginPage(page);\n  await clickIfVisible(page, [/验证码登录/, /verification.?code login/i, /sms login/i]);\n  await expectAnyVisible(page, [\n    [/手机号/, /mobile/i],\n    [/验证码/, /verification code/i],\n    [/发送验证码/, /send code/i],\n  ]);\n}\n\nexport async function setAgreement(page: Page, checked: boolean): Promise<void> {\n  await setCheckbox(page, [/协议/, /隐私政策/, /agree/i, /terms/i], checked);\n}\n\nexport async function fillPasswordLogin(page: Page, account: string, password: string, checkedAgreement = true): Promise<void> {\n  await fillField(page, [/邮箱.*用户名.*手机号/, /email.*username.*mobile/i, /account/i], account);\n  await fillField(page, [/密码/, /password/i], password);\n  if (checkedAgreement) {\n    await setAgreement(page, true);\n  }\n}\n\nexport async function submitLogin(page: Page): Promise<void> {\n  await clickFirstAvailable(page, [[/登录/, /^login$/i, /sign in/i]]);\n}\n\nexport async function expectLoggedInState(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/尊敬的/, /我的携程/, /个人中心/, /退出登录/],\n  ]);\n}\n\nexport async function login(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await ensurePasswordLogin(page);\n  await fillPasswordLogin(page, account.email, account.password, true);\n  await submitLogin(page);\n}\n\nexport async function beginRegistrationFromLogin(page: Page): Promise<void> {\n  await openLoginPage(page);\n  await clickFirstAvailable(page, [[/免费注册/, /注册/, /register/i, /sign up/i]]);\n}\n\nexport async function expectRegistrationAgreement(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/携程用户注册协议/, /隐私政策/, /agreement/i, /privacy/i],\n    [/同意并继续/, /agree and continue/i],\n  ]);\n}\n\nexport async function reachRegistrationVerifyStep(page: Page): Promise<void> {\n  await beginRegistrationFromLogin(page);\n  await expectRegistrationAgreement(page);\n  await clickFirstAvailable(page, [[/同意并继续/, /agree and continue/i]]);\n  await expectAnyVisible(page, [\n    [/手机号/, /mobile/i],\n    [/验证码/, /verification code/i],\n    [/下一步/, /设置密码/, /next/i],\n  ]);\n}\n\nexport async function reachRegistrationPasswordStep(\n  page: Page,\n  registration: RegistrationFixture = FIXTURES.registration.success,\n): Promise<void> {\n  await reachRegistrationVerifyStep(page);\n  await fillField(page, [/手机号/, /mobile/i], registration.mobile);\n  await clickFirstAvailable(page, [[/发送验证码/, /send code/i]]);\n  await expectAnyVisible(page, [[/倒计时/, /重新发送/, /countdown/i, /resend/i]]);\n  await fillField(page, [/验证码/, /verification code/i], registration.code);\n  await clickFirstAvailable(page, [[/下一步/, /设置密码/, /next/i]]);\n  await expectAnyVisible(page, [\n    [/设置密码/, /password/i],\n    [/确认密码/, /confirm/i],\n  ]);\n}\n\nexport async function openFlightSearch(page: Page): Promise<void> {\n  await openHome(page);\n  await clickIfVisible(page, [/机票/, /航班/, /flights/i]);\n  await expectAnyVisible(page, [\n    [/出发城市/, /出发地/, /from/i, /origin/i],\n    [/到达城市/, /目的地/, /to/i, /destination/i],\n    [/出发日期/, /departure date/i],\n    [/搜索/, /^search$/i],\n  ]);\n}\n\nexport async function fillFlightSearch(page: Page, route: FlightSearchFixture = FIXTURES.flightSearch): Promise<void> {\n  await fillField(page, [/出发城市/, /出发地/, /from/i, /origin/i], route.from);\n  await fillField(page, [/到达城市/, /目的地/, /to/i, /destination/i], route.to);\n  await fillField(page, [/出发日期/, /departure date/i], route.date);\n}\n\nexport async function openFlightResults(page: Page, route: FlightSearchFixture = FIXTURES.flightSearch): Promise<void> {\n  await openFlightSearch(page);\n  await fillFlightSearch(page, route);\n  await clickFirstAvailable(page, [[/搜索/, /^search$/i]]);\n}\n\nexport async function expectFlightResults(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/航班/, /flight/i],\n    [/价格/, /price/i],\n    [/筛选/, /filter/i],\n  ]);\n}\n\nexport async function openBookingPage(page: Page, route: FlightSearchFixture = FIXTURES.flightSearch): Promise<void> {\n  await openFlightResults(page, route);\n  await clickIfVisible(page, [/展开/, /更多舱位/, /详情/, /details/i]);\n  await clickFirstAvailable(page, [[/预订/, /订/, /book/i]]);\n  await expectBookingPage(page);\n}\n\nexport async function expectBookingPage(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/乘机人/, /旅客/, /traveler/i, /passenger/i],\n    [/联系人手机/, /手机号/, /mobile/i],\n    [/订单总价/, /total/i],\n  ]);\n}\n\nexport async function openPaymentPage(page: Page, route: FlightSearchFixture): Promise<void> {\n  await openBookingPage(page, route);\n  await clickIfVisible(page, [/张三/, /李四/, /成人/, /adult/i]);\n  await clickIfVisible(page, [/已阅读并同意/, /同意/, /agree/i]);\n  await clickFirstAvailable(page, [[/提交订单/, /去支付/, /确认订单/, /place order/i, /confirm/i, /next/i]]);\n}\n\nexport async function expectPaymentPage(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/剩余时间/, /支付/, /countdown/i, /pay/i],\n  ]);\n}\n\nexport async function openUserMenu(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await login(page, account);\n  await hoverIfVisible(page, [/尊敬的/, /我的携程/, /个人中心/, /account/i]);\n}\n\nexport async function openOrderCenter(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await openUserMenu(page, account);\n  await clickFirstAvailable(page, [[/订单中心/, /orders/i]]);\n}\n\nexport async function openPersonalCenter(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await openUserMenu(page, account);\n  await clickFirstAvailable(page, [[/个人中心/, /personal center/i]]);\n}\n\nexport async function expectPersonalCenter(page: Page): Promise<void> {\n  await expectAnyVisible(page, [\n    [/尊敬的用户/, /个人中心/, /common information/i, /常用信息/],\n  ]);\n}\n\nexport async function expandCommonInformation(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await openPersonalCenter(page, account);\n  await clickFirstAvailable(page, [[/常用信息/, /common information/i]]);\n}\n\nexport async function openTravelerManager(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await expandCommonInformation(page, account);\n  await clickFirstAvailable(page, [[/常用旅客/, /旅客信息/, /traveler/i]]);\n}\n\nexport async function openAddressManager(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await expandCommonInformation(page, account);\n  await clickFirstAvailable(page, [[/常用地址/, /address/i]]);\n}\n\nexport async function openContactManager(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await expandCommonInformation(page, account);\n  await clickFirstAvailable(page, [[/常用联系人/, /contact/i]]);\n}\n\nexport async function openInvoiceManager(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await expandCommonInformation(page, account);\n  await clickFirstAvailable(page, [[/常用报销凭证/, /发票抬头/, /invoice/i]]);\n}\n\nexport async function openProfileOverview(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await openPersonalCenter(page, account);\n  await clickIfVisible(page, [/个人资料/, /profile/i]);\n}\n\nexport async function openSecurityCenter(page: Page, account: AccountFixture = FIXTURES.accounts.passwordLogin): Promise<void> {\n  await openPersonalCenter(page, account);\n  await clickFirstAvailable(page, [[/安全中心/, /security center/i]]);\n}\n\nexport async function openFlightStatusPage(page: Page, history?: FlightStatusHistoryFixture): Promise<void> {\n  await openHome(page);\n  await clickIfVisible(page, [/机票/, /航班/, /flights/i]);\n  await clickIfVisible(page, [/更多服务/, /more services/i]);\n  await clickFirstAvailable(page, [[/航班动态/, /flight status/i]]);\n  if (history) {\n    await expectVisible(page, history.entry);\n  }\n}\n\nexport async function openVoucherHome(page: Page, account: AccountFixture = FIXTURES.accounts.voucherRead): Promise<void> {\n  await login(page, account);\n  await openHome(page);\n  await clickIfVisible(page, [/更多服务/, /more services/i]);\n  await clickFirstAvailable(page, [[/报销凭证/, /reimbursement/i, /invoice/i]]);\n}\n\nexport async function openAirportGuide(page: Page): Promise<void> {\n  await openHome(page);\n  await clickIfVisible(page, [/机票/, /航班/, /flights/i]);\n  await clickIfVisible(page, [/更多服务/, /more services/i]);\n  await clickFirstAvailable(page, [[/机场攻略/, /airport guide/i]]);\n}\n\nexport async function openAirportDetail(page: Page): Promise<void> {\n  await openAirportGuide(page);\n  await clickFirstAvailable(page, [[/北京首都/], [/上海浦东/], [/广州白云/], [/成都/]]);\n}\n"
+        }
+    ],
+    "public_downloads": null
+}

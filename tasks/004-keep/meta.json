@@ -1,0 +1,10 @@
+{
+  "id": "arc-bench-web--keep",
+  "display_id": "TASK-004",
+  "competition": "arc-bench-web",
+  "title": "Keep",
+  "test_runner": "playwright",
+  "total_tests": 32,
+  "test_files": 33,
+  "fetched_at": "2026-09-12T09:47:18+0800"
+}

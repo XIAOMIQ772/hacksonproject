@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(npm:*)",
+      "Shell(python3 /private/tmp/commandcode-501/-Users-mi7qi-project-hackson-project-agent-blank-based/57301f20-0864-437f-9ee8-4ce97a96f2eb/scratchpad/test_llm_path.py 2 >& 1)",
+      "Shell(python3 - <<'EOF' import subprocess, shutil from pathlib import Path frontend = Path(\"/tmp/arcbench-llm-test-output/frontend\") shutil.rmtree(\"/tmp/arcbench-llm-test-output\", ignore_errors=True) import sys; sys.path.insert(0, \"/Users/mi7qi/project/hackson_project/agent-blank-based\") import main as agent agent.copy_template_contents_to_output(agent.resolve_starter_template_dir(), Path(\"/tmp/arcbench-llm-test-output\")) proc = subprocess.run([\"npm\",\"install\",\"--no-audit\",\"--no-fund\"], cwd=frontend, capture_output=True, text=True, timeout=900) print(\"install rc:\", proc.returncode) print(\"install out:\", proc.stdout[-300:]) print(\"install err:\", proc.stderr[-300:]) ok, out = agent.run_frontend_build(Path(\"/tmp/arcbench-llm-test-output\")) print(\"build ok:\", ok) print(\"build out:\", out[-500:]) EOF)",
+      "Shell(python3 - <<'EOF' import subprocess, shutil, sys from pathlib import Path sys.path.insert(0, \"/Users/mi7qi/project/hackson_project/agent-blank-based\") import main as agent shutil.rmtree(\"/tmp/arcbench-llm-test-output\", ignore_errors=True) agent.copy_template_contents_to_output(agent.resolve_starter_template_dir(), Path(\"/tmp/arcbench-llm-test-output\")) agent.ensure_frontend_deps(Path(\"/tmp/arcbench-llm-test-output\")) print(\"vite bin:\", Path(\"/tmp/arcbench-llm-test-output/frontend/node_modules/.bin/vite\").exists()) ok, out = agent.run_frontend_build(Path(\"/tmp/arcbench-llm-test-output\")) print(\"build ok:\", ok); print(out[-600:]) EOF)",
+      "Shell(git:*)",
+      "Shell(rm:*)",
+      "Shell(python3 -m py_compile main.py && rm -rf /tmp/arcbench-check && python3 main.py \"$(pwd)\" --output-dir /tmp/arcbench-check --type web && echo E2E_OK && rm -rf /tmp/arcbench-check && zip -X ../agent-blank-based.zip main.py && echo ZIP_UPDATED)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

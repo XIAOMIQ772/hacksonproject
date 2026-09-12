@@ -1,0 +1,353 @@
+{
+    "files": [
+        {
+            "path": "REQ-0.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-0\n// fixtures: public_homepage\n\ntest('REQ-0: Visit Homepage', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectTextsVisible(page, [/carousel/i, /popular products/i, /search/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.1\n// fixtures: public_homepage\n\ntest('REQ-1.1: View Global Navigation', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectTextsVisible(page, [/logo/i, /search/i, /sign in/i, /cart/i, /language/i, /clothes/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.2\n// fixtures: public_homepage\n\ntest('REQ-1.2: Logo Click Returns Home', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[/logo/i, /home/i]]);\n  await h.expectHome(page);\n});\n"
+        },
+        {
+            "path": "REQ-1.3.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.3.1\n// fixtures: public_homepage, category_catalog\n\ntest('REQ-1.3.1: Expand Category Menu', async ({ page }) => {\n  await h.openHome(page);\n  await h.openCategoryMenu(page);\n  await h.expectTextsVisible(page, [/men/i, /women/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.3.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.3.2\n// fixtures: public_homepage, category_catalog\n\ntest('REQ-1.3.2: Enter Subcategory', async ({ page }) => {\n  await h.openHome(page);\n  await h.openCategoryMenu(page);\n  await h.clickFirstAvailable(page, [[/men/i]]);\n  await h.expectTextsVisible(page, [/men/i, /sort by/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.4\n// fixtures: public_homepage, searchable_catalog\n\ntest('REQ-1.4: Search Function', async ({ page }) => {\n  await h.openHome(page);\n  await h.clickFirstAvailable(page, [[/search/i]]);\n  await h.fillField(page, [/search/i], h.FIXTURES.catalog.searchKeyword);\n  await h.expectTextsVisible(page, [/shirt/i]);\n  await h.pressEnter(page, [/search/i]);\n  await h.expectTextsVisible(page, [/shirt/i, /results|products/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.5.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.5\n// fixtures: public_homepage\n\ntest('REQ-1.5: User Entry', async ({ page }) => {\n  await h.openSignIn(page);\n  await h.expectTextsVisible(page, [/sign in/i, /email/i, /password/i]);\n});\n"
+        },
+        {
+            "path": "REQ-1.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.6.1\n// fixtures: public_homepage\n\ntest('REQ-1.6.1: View Cart Count', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectCartCount(page);\n});\n"
+        },
+        {
+            "path": "REQ-1.6.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-1.6.2\n// fixtures: public_homepage\n\ntest('REQ-1.6.2: Click to Enter Cart', async ({ page }) => {\n  await h.openHome(page);\n  await h.openCart(page);\n  await h.expectTextsVisible(page, [/shopping cart/i, /cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.1\n// fixtures: public_homepage\n\ntest('REQ-2.1: Browse Homepage', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectTextsVisible(page, [/carousel/i, /popular products/i, /newsletter/i, /footer/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.2.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.2.1\n// fixtures: public_homepage\n\ntest('REQ-2.2.1: Carousel Auto Switch', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectCarouselToChange(page);\n});\n"
+        },
+        {
+            "path": "REQ-2.2.2.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.2.2\n// fixtures: public_homepage\n\ntest('REQ-2.2.2: Manual Carousel Switch', async ({ page }) => {\n  await h.openHome(page);\n  await h.expectCarouselToChange(page, async () => {\n    await h.clickFirstAvailable(page, [[/next/i, /previous/i, /right/i, /left/i]]);\n  });\n});\n"
+        },
+        {
+            "path": "REQ-2.2.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.2.3\n// fixtures: public_homepage\n\ntest('REQ-2.2.3: Click Carousel to Navigate', async ({ page }) => {\n  await h.openHome(page);\n  await h.clickFirstAvailable(page, [[/shop now/i, /discover/i, /carousel/i]]);\n  await h.expectTextsVisible(page, [/product|sale|category/i]);\n});\n"
+        },
+        {
+            "path": "REQ-2.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-2.3\n// fixtures: public_homepage, products.detail\n\ntest('REQ-2.3: Popular Products Section', async ({ page }) => {\n  await h.openHome(page);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.catalog.popularProduct]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.catalog.popularProduct, /add to cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.1\n// fixtures: public_homepage, category_catalog\n\ntest('REQ-3.1: Enter Category Page', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.expectTextsVisible(page, [/men/i, /sort by/i, /showing/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.1\n// fixtures: category_listing\n\ntest('REQ-3.2.1: View Breadcrumb Navigation', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.expectTextsVisible(page, [/home/i, /clothes/i, /men/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.2.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.2.2\n// fixtures: category_listing\n\ntest('REQ-3.2.2: Navigate Back via Breadcrumb', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[/clothes/i]]);\n  await h.expectTextsVisible(page, [/clothes/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.3\n// fixtures: category_listing\n\ntest('REQ-3.3: Category Description', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.expectTextsVisible(page, [/men/i, /products/i, /description/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.4\n// fixtures: category_listing\n\ntest('REQ-3.4: Subcategory Navigation', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[/women/i]]);\n  await h.expectTextsVisible(page, [/women/i, /sort by/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.1\n// fixtures: category_listing\n\ntest('REQ-3.5.1: View Product Cards', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.expectTextsVisible(page, [h.FIXTURES.catalog.popularProduct, /€|\\$/i, /sale/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.2\n// fixtures: category_listing\n\ntest('REQ-3.5.2: Hover to Show Action Buttons', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.hoverNamed(page, [h.FIXTURES.catalog.popularProduct]);\n  await h.expectTextsVisible(page, [/quick view/i, /wishlist/i, /color/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.5.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.5.3\n// fixtures: category_listing\n\ntest('REQ-3.5.3: Click to Enter Detail Page', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.catalog.popularProduct]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.catalog.popularProduct, /add to cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.6.1.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.6.1\n// fixtures: category_listing, filterable_catalog\n\ntest('REQ-3.6.1: Filter by Availability', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.setCheckbox(page, [/in stock/i], true);\n  await h.expectTextsVisible(page, [h.FIXTURES.catalog.whiteProduct]);\n  await h.expectTextAbsent(page, h.FIXTURES.catalog.blackProduct);\n});\n"
+        },
+        {
+            "path": "REQ-3.6.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.6.2\n// fixtures: category_listing, filterable_catalog\n\ntest('REQ-3.6.2: Filter by Color', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[/white/i]]);\n  await h.expectTextsVisible(page, [/white/i]);\n  await h.expectTextAbsent(page, h.FIXTURES.catalog.blackProduct);\n});\n"
+        },
+        {
+            "path": "REQ-3.6.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.6.3\n// fixtures: category_listing, filterable_catalog\n\ntest('REQ-3.6.3: Filter by Price Range', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.fillField(page, [/price/i], '20');\n  await h.expectTextsVisible(page, [/€|\\$/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.6.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.6.4\n// fixtures: category_listing, filterable_catalog\n\ntest('REQ-3.6.4: Clear All Filters', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.setCheckbox(page, [/in stock/i], true);\n  await h.clickFirstAvailable(page, [[/clear all/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.catalog.blackProduct, h.FIXTURES.catalog.whiteProduct]);\n});\n"
+        },
+        {
+            "path": "REQ-3.7.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.7\n// fixtures: category_listing, sortable_catalog\n\ntest('REQ-3.7: Sort Function', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[/sort by/i]]);\n  await h.expectTextsVisible(page, [/price, low to high/i]);\n  await h.clickFirstAvailable(page, [[/price, low to high/i]]);\n  await h.expectTextsVisible(page, [/€|\\$/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.8.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.8\n// fixtures: category_listing, sortable_catalog\n\ntest('REQ-3.8: Product Count Display', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.expectTextsVisible(page, [/showing/i, /item/i]);\n});\n"
+        },
+        {
+            "path": "REQ-3.9.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-3.9\n// fixtures: category_listing, sortable_catalog\n\ntest('REQ-3.9: Pagination', async ({ page }) => {\n  await h.openCategoryPage(page);\n  await h.clickFirstAvailable(page, [[/next/i, /^2$/i]]);\n  await h.expectTextsVisible(page, [/showing/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.1\n// fixtures: products.detail\n\ntest('REQ-4.1: Enter Product Detail Page', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.expectTextsVisible(page, [h.FIXTURES.products.detail.name, /add to cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.10.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.10\n// fixtures: products.detail\n\ntest('REQ-4.10: Recently Viewed', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.expectTextsVisible(page, [/recently viewed/i, /product/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.11.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.11\n// fixtures: products.detail\n\ntest('REQ-4.11: Related Products', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.expectTextsVisible(page, [/related products/i, /you might also like/i, /same category/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.2\n// fixtures: products.detail\n\ntest('REQ-4.2: Product Image Area', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.expectTextsVisible(page, [/image/i, /zoom/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.3\n// fixtures: products.detail\n\ntest('REQ-4.3: Product Basic Info', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.expectTextsVisible(page, [h.FIXTURES.products.detail.name, /€|\\$/i, /tax/i, /20%/i, /description/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.4\n// fixtures: products.detail\n\ntest('REQ-4.4: Variant Selection', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.chooseOption(page, [/size/i], h.FIXTURES.products.detail.size!);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.products.detail.color!]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.products.detail.color!, h.FIXTURES.products.detail.size!]);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.1\n// fixtures: products.detail\n\ntest('REQ-4.5.1: Increase Quantity', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.clickFirstAvailable(page, [[/\\+/i, /increase/i]]);\n  await h.expectFieldValue(page, [/quantity/i], '2');\n});\n"
+        },
+        {
+            "path": "REQ-4.5.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.2\n// fixtures: products.detail\n\ntest('REQ-4.5.2: Decrease Quantity', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.clickFirstAvailable(page, [[/\\-/i, /decrease/i]]);\n  await h.expectFieldValue(page, [/quantity/i], '1');\n});\n"
+        },
+        {
+            "path": "REQ-4.5.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.3\n// fixtures: products.detail\n\ntest('REQ-4.5.3: Direct Input Quantity', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.setProductQuantity(page, h.FIXTURES.products.detail.quantity!);\n  await h.expectFieldValue(page, [/quantity/i], h.FIXTURES.products.detail.quantity!);\n});\n"
+        },
+        {
+            "path": "REQ-4.5.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.5.4\n// fixtures: products.detail\n\ntest('REQ-4.5.4: Stock Insufficient Warning', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.setProductQuantity(page, h.FIXTURES.products.detail.excessiveQuantity!);\n  await h.addProductToCart(page);\n  await h.expectTextsVisible(page, [/stock/i, /insufficient/i, /available/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.6.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.6.1\n// fixtures: products.cart\n\ntest('REQ-4.6.1: Add Product to Cart', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.expectTextsVisible(page, [/product successfully added to your shopping cart/i, /cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.6.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.6.2\n// fixtures: products.cart\n\ntest('REQ-4.6.2: Continue Shopping After Add', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/continue shopping/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.products.cart.name, /add to cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.6.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.6.3\n// fixtures: products.cart\n\ntest('REQ-4.6.3: Proceed to Checkout After Add', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.expectTextsVisible(page, [/shopping cart/i, /subtotal/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.7.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.7\n// fixtures: products.detail\n\ntest('REQ-4.7: Add to Wishlist', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.clickFirstAvailable(page, [[/wishlist/i]]);\n  await h.expectTextsVisible(page, [/wishlist/i, /sign in|login|added/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.8.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.8.1\n// fixtures: products.detail\n\ntest('REQ-4.8.1: View Description Tab', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.clickFirstAvailable(page, [[/description/i]]);\n  await h.expectTextsVisible(page, [/description/i, /hummingbird|regular fit|product/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.8.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.8.2\n// fixtures: products.detail\n\ntest('REQ-4.8.2: View Product Details Tab', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.clickFirstAvailable(page, [[/product details/i, /details/i]]);\n  await h.expectTextsVisible(page, [/reference/i, /data sheet/i, /features/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.9.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.9.1\n// fixtures: products.detail\n\ntest('REQ-4.9.1: View Review List', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.expectTextsVisible(page, [/review/i, /rating/i, /average/i]);\n});\n"
+        },
+        {
+            "path": "REQ-4.9.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-4.9.2\n// fixtures: products.detail\n\ntest('REQ-4.9.2: Add Review', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.detail);\n  await h.clickFirstAvailable(page, [[/write your review/i, /review/i]]);\n  await h.expectTextsVisible(page, [/login|sign in|review form/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.1\n// fixtures: products.cart\n\ntest('REQ-5.1: Enter Cart', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.expectTextsVisible(page, [/shopping cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.2\n// fixtures: products.cart\n\ntest('REQ-5.2: Cart Product List', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.products.cart.name, /quantity/i, /subtotal/i, /delete/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.3\n// fixtures: products.cart\n\ntest('REQ-5.3: Modify Product Quantity', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.clickFirstAvailable(page, [[/\\+/i, /increase/i]]);\n  await h.expectTextsVisible(page, [/total/i, /subtotal/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.4\n// fixtures: products.cart\n\ntest('REQ-5.4: Delete Product', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.clickFirstAvailable(page, [[/delete/i, /remove/i]]);\n  await h.expectTextsVisible(page, [/cart/i, /empty|subtotal/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.5.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.5\n// fixtures: products.cart\n\ntest('REQ-5.5: Cart Summary', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.expectTextsVisible(page, [/subtotal/i, /shipping/i, /discount/i, /tax incl/i, /total/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.6.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.6\n// fixtures: products.cart\n\ntest('REQ-5.6: Continue Shopping Link', async ({ page }) => {\n  await h.openProductDetail(page, h.FIXTURES.products.cart);\n  await h.addProductToCart(page);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.clickFirstAvailable(page, [[/continue shopping/i]]);\n  await h.expectTextsVisible(page, [/home|products|search/i]);\n});\n"
+        },
+        {
+            "path": "REQ-5.7.spec.ts",
+            "content": "import { test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-5.7\n// fixtures: products.cart\n\ntest('REQ-5.7: Proceed to Checkout Button', async ({ page }) => {\n  await h.openCartWithProduct(page, h.FIXTURES.products.cart);\n  await h.clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await h.expectTextsVisible(page, [/checkout|personal information/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.1\n// fixtures: products.checkoutStep\n\ntest('REQ-6.1: Start Checkout', async ({ page }) => {\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.expectTextsVisible(page, [/personal information/i, /checkout/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.2\n// fixtures: accounts.checkoutInformation, products.checkoutStep\n\ntest('REQ-6.2: Personal Information Step', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutInformation);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.expectTextsVisible(page, [/personal information/i, /address/i, /sign in|guest|create account/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.3.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.3.1\n// fixtures: accounts.checkoutExistingAddress, products.checkoutStep, address.home\n\ntest('REQ-6.3.1: Select Existing Address', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutExistingAddress);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.clickFirstAvailable(page, [[/continue/i, /addresses/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.address.alias, /selected|address/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.3.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.3.2\n// fixtures: accounts.checkoutNewAddress, products.checkoutStep\n\ntest('REQ-6.3.2: Add New Address', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutNewAddress);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.clickFirstAvailable(page, [[/continue/i, /addresses/i]]);\n  await h.clickFirstAvailable(page, [[/add new address/i]]);\n  await h.expectTextsVisible(page, [/alias/i, /address/i, /city/i, /country/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.3.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.3.3\n// fixtures: accounts.checkoutInvoice, products.checkoutStep, address.home\n\ntest('REQ-6.3.3: Set Invoice Address', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutInvoice);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.clickFirstAvailable(page, [[/continue/i, /addresses/i]]);\n  await h.setCheckbox(page, [/use same address/i, /invoice address/i], false);\n  await h.expectTextsVisible(page, [/invoice/i, /address/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.4\n// fixtures: accounts.checkoutInvoice, products.checkoutStep, address.home\n\ntest('REQ-6.4: Shipping Method Step', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutInvoice);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.clickFirstAvailable(page, [[/continue/i, /shipping/i]]);\n  await h.expectTextsVisible(page, [/shipping method/i, /delivery/i, /€|\\$/i]);\n  await h.clickFirstAvailable(page, [[/delivery/i, /pick up/i]]);\n  await h.expectTextsVisible(page, [/total/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.5.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.5\n// fixtures: accounts.checkoutInvoice, products.checkoutStep, address.home\n\ntest('REQ-6.5: Payment Step', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutInvoice);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.checkoutStep);\n  await h.clickFirstAvailable(page, [[/continue/i, /shipping/i]]);\n  await h.clickFirstAvailable(page, [[/continue/i, /payment/i]]);\n  await h.expectTextsVisible(page, [/payment/i, /bank wire|check/i]);\n  await h.clickFirstAvailable(page, [[/bank wire/i, /pay by check/i]]);\n  await h.setCheckbox(page, [/terms/i], true);\n  await h.expectTextsVisible(page, [/terms/i, /checked|agree/i]);\n  await h.clickFirstAvailable(page, [[/terms/i]]);\n});\n"
+        },
+        {
+            "path": "REQ-6.6.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.6\n// fixtures: accounts.checkoutOrderConfirmation, products.orderConfirmation, address.home\n\ntest('REQ-6.6: Order Confirmation', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutOrderConfirmation);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.orderConfirmation);\n  await h.clickFirstAvailable(page, [[/continue/i, /shipping/i]]);\n  await h.clickFirstAvailable(page, [[/continue/i, /payment/i]]);\n  await h.clickFirstAvailable(page, [[/bank wire/i, /pay by check/i]]);\n  await h.setCheckbox(page, [/terms/i], true);\n  await h.clickFirstAvailable(page, [[/place order/i, /confirm order/i]]);\n  await h.expectTextsVisible(page, [/order confirmation|order complete|order details/i]);\n});\n"
+        },
+        {
+            "path": "REQ-6.7.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-6.7\n// fixtures: accounts.checkoutOrderComplete, products.orderComplete, address.home\n\ntest('REQ-6.7: Order Complete Page', async ({ page }) => {\n  await h.login(page, h.FIXTURES.accounts.checkoutOrderComplete);\n  await h.startCheckoutWithProduct(page, h.FIXTURES.products.orderComplete);\n  await h.clickFirstAvailable(page, [[/continue/i, /shipping/i]]);\n  await h.clickFirstAvailable(page, [[/continue/i, /payment/i]]);\n  await h.clickFirstAvailable(page, [[/bank wire/i, /pay by check/i]]);\n  await h.setCheckbox(page, [/terms/i], true);\n  await h.clickFirstAvailable(page, [[/place order/i, /confirm order/i]]);\n  await h.expectTextsVisible(page, [/reference/i, /order details/i]);\n  await h.clickFirstAvailable(page, [[/continue shopping/i]]);\n  await h.expectHome(page);\n});\n"
+        },
+        {
+            "path": "REQ-7.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.1\n// fixtures: public_homepage\n\ntest('REQ-7.1: Enter Login Page', async ({ page }) => {\n  await h.openSignIn(page);\n  await h.expectTextsVisible(page, [/sign in/i, /email/i]);\n});\n"
+        },
+        {
+            "path": "REQ-7.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.2\n// fixtures: accounts.login\n\ntest('REQ-7.2: User Login', async ({ page }) => {\n  await h.openSignIn(page);\n  await h.fillField(page, [/email/i], h.FIXTURES.accounts.login.email);\n  await h.fillField(page, [/password/i], h.FIXTURES.accounts.login.password);\n  await h.expectFieldValue(page, [/password/i], /.+/);\n  await h.clickFirstAvailable(page, [[/show/i]]);\n  await h.expectTextsVisible(page, [/hide/i, /remember me/i]);\n  await h.setCheckbox(page, [/remember me/i], true);\n  await h.clickFirstAvailable(page, [[/sign in/i]]);\n  await h.expectTextsVisible(page, [/my account|sign out|store/i]);\n});\n"
+        },
+        {
+            "path": "REQ-7.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.3\n// fixtures: registration_candidate\n\ntest('REQ-7.3: User Registration', async ({ page }) => {\n  await h.openSignIn(page);\n  await h.clickFirstAvailable(page, [[/no account\\? create one here/i, /create one here/i]]);\n  await h.expectTextsVisible(page, [/first name/i, /last name/i, /birthday/i]);\n  await h.setRadio(page, [/mr\\.?/i]);\n  await h.fillField(page, [/first name/i], 'New');\n  await h.fillField(page, [/last name/i], 'Customer');\n  await h.fillField(page, [/email/i], 'new_customer@example.com');\n  await h.fillField(page, [/password/i], 'ShopPass123!');\n  await h.fillField(page, [/birthdate|birthday/i], '1995-08-21');\n  await h.setCheckbox(page, [/receive offers/i], true);\n  await h.setCheckbox(page, [/newsletter/i], true);\n  await h.setCheckbox(page, [/terms/i], true);\n  await h.clickFirstAvailable(page, [[/save/i]]);\n  await h.expectTextsVisible(page, [/my account|sign out/i]);\n});\n"
+        },
+        {
+            "path": "REQ-7.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-7.4\n// fixtures: accounts.login\n\ntest('REQ-7.4: Forgot Password', async ({ page }) => {\n  await h.openSignIn(page);\n  await h.clickFirstAvailable(page, [[/forgot your password\\?/i]]);\n  await h.expectTextsVisible(page, [/reset password|password reset/i]);\n  await h.fillField(page, [/email/i], h.FIXTURES.accounts.login.email);\n  await h.clickFirstAvailable(page, [[/send/i, /retrieve/i]]);\n  await h.expectTextsVisible(page, [/email sent|reset link|success/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.1\n// fixtures: accounts.login\n\ntest('REQ-8.1: Enter My Account', async ({ page }) => {\n  await h.openMyAccount(page, h.FIXTURES.accounts.login);\n  await h.expectTextsVisible(page, [/my account/i, /information|addresses|orders/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.2\n// fixtures: accounts.login\n\ntest('REQ-8.2: Account Overview', async ({ page }) => {\n  await h.openMyAccount(page, h.FIXTURES.accounts.login);\n  await h.expectTextsVisible(page, [/order history/i, /addresses/i, /information/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.3\n// fixtures: accounts.profile\n\ntest('REQ-8.3: Account Information Management', async ({ page }) => {\n  await h.openMyAccount(page, h.FIXTURES.accounts.profile);\n  await h.clickFirstAvailable(page, [[/information/i]]);\n  await h.expectTextsVisible(page, [/first name/i, /last name/i, /password/i]);\n  await h.fillField(page, [/email/i], h.FIXTURES.accounts.profile.newEmail);\n  await h.clickFirstAvailable(page, [[/save/i]]);\n  await h.expectTextsVisible(page, [/updated|saved|success/i]);\n  await h.fillField(page, [/new password/i, /password/i], h.FIXTURES.accounts.profile.newPassword);\n  await h.clickFirstAvailable(page, [[/save/i]]);\n  await h.expectTextsVisible(page, [/updated|saved|success/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.4.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.4.1\n// fixtures: accounts.addressView, address.home\n\ntest('REQ-8.4.1: View Address List', async ({ page }) => {\n  await h.openAddressBook(page, h.FIXTURES.accounts.addressView);\n  await h.expectTextsVisible(page, [/addresses/i, h.FIXTURES.address.alias]);\n});\n"
+        },
+        {
+            "path": "REQ-8.4.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.4.2\n// fixtures: accounts.addressCreate, address.empty\n\ntest('REQ-8.4.2: Add New Address', async ({ page }) => {\n  await h.openAddressBook(page, h.FIXTURES.accounts.addressCreate);\n  await h.clickFirstAvailable(page, [[/create new address/i, /add first address/i]]);\n  await h.expectTextsVisible(page, [/alias/i, /address/i, /city/i, /country/i]);\n  await h.fillField(page, [/alias/i], h.FIXTURES.address.newAlias);\n  await h.fillField(page, [/first name/i], h.FIXTURES.address.firstName);\n  await h.fillField(page, [/last name/i], h.FIXTURES.address.lastName);\n  await h.fillField(page, [/address/i], h.FIXTURES.address.address1);\n  await h.fillField(page, [/zip|postal/i], h.FIXTURES.address.postalCode);\n  await h.fillField(page, [/city/i], h.FIXTURES.address.city);\n  await h.chooseOption(page, [/country/i], h.FIXTURES.address.country);\n  await h.fillField(page, [/phone/i], h.FIXTURES.address.phone);\n  await h.clickFirstAvailable(page, [[/save/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.address.newAlias, /address/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.4.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.4.3\n// fixtures: accounts.addressEdit, address.home\n\ntest('REQ-8.4.3: Edit Address', async ({ page }) => {\n  await h.openAddressBook(page, h.FIXTURES.accounts.addressEdit);\n  await h.clickFirstAvailable(page, [[/update/i, /edit/i]]);\n  await h.expectTextsVisible(page, [/alias/i, /address/i]);\n  await h.fillField(page, [/address/i], h.FIXTURES.address.updatedAddress1);\n  await h.clickFirstAvailable(page, [[/save/i]]);\n  await h.expectTextsVisible(page, [/updated|saved|success/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.4.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.4.4\n// fixtures: accounts.addressDelete, address.home\n\ntest('REQ-8.4.4: Delete Address', async ({ page }) => {\n  await h.openAddressBook(page, h.FIXTURES.accounts.addressDelete);\n  await h.clickFirstAvailable(page, [[/delete/i]]);\n  await h.expectTextsVisible(page, [/address/i, /deleted|removed|success/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.5.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.5.1\n// fixtures: accounts.orderHistory, order_history\n\ntest('REQ-8.5.1: View Order List', async ({ page }) => {\n  await h.openOrderHistory(page, h.FIXTURES.accounts.orderHistory);\n  await h.expectTextsVisible(page, [/reference/i, /date/i, /status/i, /total/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.5.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.5.2\n// fixtures: accounts.orderHistory, order_history\n\ntest('REQ-8.5.2: View Order Details', async ({ page }) => {\n  await h.openOrderHistory(page, h.FIXTURES.accounts.orderHistory);\n  await h.clickFirstAvailable(page, [[/details/i]]);\n  await h.expectTextsVisible(page, [/shipping/i, /payment/i, /product/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.5.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.5.3\n// fixtures: accounts.orderHistory, order_history\n\ntest('REQ-8.5.3: Reorder', async ({ page }) => {\n  await h.openOrderHistory(page, h.FIXTURES.accounts.orderHistory);\n  await h.clickFirstAvailable(page, [[/reorder/i]]);\n  await h.expectTextsVisible(page, [/cart/i, /subtotal/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.5.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.5.4\n// fixtures: accounts.orderHistory, order_history\n\ntest('REQ-8.5.4: Download Invoice', async ({ page }) => {\n  await h.openOrderHistory(page, h.FIXTURES.accounts.orderHistory);\n  const download = await h.awaitDownload(() => h.clickFirstAvailable(page, [[/pdf/i]]), page);\n  await expect(download.suggestedFilename()).toMatch(/\\.pdf$/i);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.1.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.1\n// fixtures: accounts.wishlistView, wishlist.favorites\n\ntest('REQ-8.6.1: View Wishlist List', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistView);\n  await h.expectTextsVisible(page, [/wishlist/i, h.FIXTURES.wishlist.name]);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.2.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.2\n// fixtures: accounts.wishlistCreate\n\ntest('REQ-8.6.2: Create New Wishlist', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistCreate);\n  await h.clickFirstAvailable(page, [[/create new wishlist/i, /new wishlist/i]]);\n  await h.expectTextsVisible(page, [/wishlist/i, /name/i]);\n  await h.fillField(page, [/name/i], h.FIXTURES.wishlist.renamed);\n  await h.clickFirstAvailable(page, [[/save/i, /create/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.wishlist.renamed]);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.3.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.3\n// fixtures: accounts.wishlistView, wishlist.favorites, products.wishlist\n\ntest('REQ-8.6.3: View Wishlist Products', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistView);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.wishlist.name]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.products.wishlist.name, /add to cart/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.4.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.4\n// fixtures: accounts.wishlistRename, wishlist.favorites\n\ntest('REQ-8.6.4: Rename Wishlist', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistRename);\n  await h.clickFirstAvailable(page, [[/edit/i, /rename/i]]);\n  await h.fillField(page, [/name/i], h.FIXTURES.wishlist.renamed);\n  await h.clickFirstAvailable(page, [[/save/i]]);\n  await h.expectTextsVisible(page, [h.FIXTURES.wishlist.renamed]);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.5.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.5\n// fixtures: accounts.wishlistDelete, wishlist.favorites\n\ntest('REQ-8.6.5: Delete Wishlist', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistDelete);\n  await h.clickFirstAvailable(page, [[/delete/i]]);\n  await h.expectTextsVisible(page, [/wishlist/i, /deleted|removed|success/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.6.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.6\n// fixtures: accounts.wishlistRemove, wishlist.favorites, products.wishlist\n\ntest('REQ-8.6.6: Remove Product from Wishlist', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistRemove);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.wishlist.name]]);\n  await h.clickFirstAvailable(page, [[/remove/i, /delete/i]]);\n  await h.expectTextsVisible(page, [/removed|deleted|success/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.6.7.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.6.7\n// fixtures: accounts.wishlistCart, wishlist.favorites, products.wishlist\n\ntest('REQ-8.6.7: Add Wishlist Product to Cart', async ({ page }) => {\n  await h.openWishlists(page, h.FIXTURES.accounts.wishlistCart);\n  await h.clickFirstAvailable(page, [[h.FIXTURES.wishlist.name]]);\n  await h.clickFirstAvailable(page, [[/add to cart/i]]);\n  await h.expectTextsVisible(page, [/cart/i, /added/i]);\n});\n"
+        },
+        {
+            "path": "REQ-8.7.spec.ts",
+            "content": "import { expect, test } from '@playwright/test';\nimport * as h from './helpers';\n\n// requirement: REQ-8.7\n// fixtures: accounts.login\n\ntest('REQ-8.7: User Logout', async ({ page }) => {\n  await h.openMyAccount(page, h.FIXTURES.accounts.login);\n  await h.clickFirstAvailable(page, [[/sign out/i, /logout/i]]);\n  await h.expectHome(page);\n});\n"
+        },
+        {
+            "path": "helpers.ts",
+            "content": "\nimport { Download, expect, Locator, Page } from '@playwright/test';\n\ntype Scope = Page | Locator;\ntype Match = string | RegExp | Array<string | RegExp>;\n\nexport type ProductFixture = {\n  name: string;\n  size?: string;\n  color?: string;\n  quantity?: string;\n  excessiveQuantity?: string;\n};\n\nexport type AccountFixture = {\n  email: string;\n  password: string;\n  firstName?: string;\n  lastName?: string;\n};\n\nexport const FIXTURES = {\n  catalog: {\n    topCategory: 'CLOTHES',\n    subcategory: 'Men',\n    secondarySubcategory: 'Women',\n    searchKeyword: 'shirt',\n    popularProduct: 'Hummingbird detail t-shirt',\n    alternativeProduct: 'The best is yet to come notebook',\n    whiteProduct: 'White t-shirt',\n    blackProduct: 'Black mug',\n  },\n  products: {\n    detail: {\n      name: 'Hummingbird detail t-shirt',\n      size: 'M',\n      color: 'White',\n      quantity: '3',\n      excessiveQuantity: '999',\n    },\n    cart: {\n      name: 'Hummingbird cart t-shirt',\n    },\n    checkoutStep: {\n      name: 'Hummingbird checkout-step t-shirt',\n    },\n    orderConfirmation: {\n      name: 'Hummingbird order-confirmation t-shirt',\n    },\n    orderComplete: {\n      name: 'Hummingbird order-complete t-shirt',\n    },\n    orderHistory: {\n      name: 'Hummingbird order-history t-shirt',\n    },\n    wishlist: {\n      name: 'Hummingbird wishlist t-shirt',\n    },\n  },\n  accounts: {\n    login: {\n      firstName: 'Store',\n      lastName: 'User',\n      email: 'prestashop_user@example.com',\n      password: 'ShopPass123!',\n    },\n    profile: {\n      email: 'prestashop_profile_user@example.com',\n      password: 'ShopPass123!',\n      newEmail: 'prestashop_profile_user_next@example.com',\n      newPassword: 'ShopPass456!',\n    },\n    checkoutInformation: {\n      email: 'prestashop_checkout_user@example.com',\n      password: 'ShopPass123!',\n    },\n    checkoutExistingAddress: {\n      email: 'prestashop_checkout_address_user@example.com',\n      password: 'ShopPass123!',\n    },\n    checkoutNewAddress: {\n      email: 'prestashop_checkout_new_address_user@example.com',\n      password: 'ShopPass123!',\n    },\n    checkoutInvoice: {\n      email: 'prestashop_checkout_invoice_user@example.com',\n      password: 'ShopPass123!',\n    },\n    checkoutOrderConfirmation: {\n      email: 'prestashop_checkout_6_6_user@example.com',\n      password: 'ShopPass123!',\n    },\n    checkoutOrderComplete: {\n      email: 'prestashop_checkout_6_7_user@example.com',\n      password: 'ShopPass123!',\n    },\n    addressView: {\n      email: 'prestashop_address_view_user@example.com',\n      password: 'ShopPass123!',\n    },\n    addressCreate: {\n      email: 'prestashop_address_create_user@example.com',\n      password: 'ShopPass123!',\n    },\n    addressEdit: {\n      email: 'prestashop_address_edit_user@example.com',\n      password: 'ShopPass123!',\n    },\n    addressDelete: {\n      email: 'prestashop_address_delete_user@example.com',\n      password: 'ShopPass123!',\n    },\n    orderHistory: {\n      email: 'prestashop_order_history_user@example.com',\n      password: 'ShopPass123!',\n    },\n    wishlistView: {\n      email: 'prestashop_wishlist_view_user@example.com',\n      password: 'ShopPass123!',\n    },\n    wishlistCreate: {\n      email: 'prestashop_wishlist_create_user@example.com',\n      password: 'ShopPass123!',\n    },\n    wishlistRename: {\n      email: 'prestashop_wishlist_rename_user@example.com',\n      password: 'ShopPass123!',\n    },\n    wishlistDelete: {\n      email: 'prestashop_wishlist_delete_user@example.com',\n      password: 'ShopPass123!',\n    },\n    wishlistRemove: {\n      email: 'prestashop_wishlist_remove_user@example.com',\n      password: 'ShopPass123!',\n    },\n    wishlistCart: {\n      email: 'prestashop_wishlist_cart_user@example.com',\n      password: 'ShopPass123!',\n    },\n  },\n  address: {\n    alias: 'Home',\n    newAlias: 'Office',\n    firstName: 'Store',\n    lastName: 'User',\n    address1: '1 Commerce Road',\n    updatedAddress1: '88 Market Street',\n    postalCode: '200000',\n    city: 'Shanghai',\n    country: 'China',\n    phone: '13800000020',\n  },\n  wishlist: {\n    name: 'Favorites',\n    renamed: 'Holiday Picks',\n  },\n} as const;\n\nfunction escapeRegExp(text: string): string {\n  return text.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n}\n\nfunction toPatterns(value: Match): RegExp[] {\n  const items = Array.isArray(value) ? value : [value];\n  return items.map((item) => item instanceof RegExp ? item : new RegExp(escapeRegExp(item).replace(/\\s+/g, '\\\\s+'), 'i'));\n}\n\nfunction target(scope: Scope): any {\n  return scope as any;\n}\n\nasync function firstVisible(locators: Locator[]): Promise<Locator> {\n  for (const locator of locators) {\n    const candidate = locator.first();\n    try {\n      if (await candidate.isVisible({ timeout: 500 })) return candidate;\n    } catch {\n      // continue\n    }\n  }\n  for (const locator of locators) {\n    const candidate = locator.first();\n    try {\n      if (await candidate.count()) return candidate;\n    } catch {\n      // continue\n    }\n  }\n  return locators[0].first();\n}\n\nfunction namedLocators(scope: Scope, pattern: RegExp): Locator[] {\n  const t = target(scope);\n  return [\n    t.getByRole('button', { name: pattern }),\n    t.getByRole('link', { name: pattern }),\n    t.getByRole('menuitem', { name: pattern }),\n    t.getByRole('tab', { name: pattern }),\n    t.getByRole('checkbox', { name: pattern }),\n    t.getByRole('radio', { name: pattern }),\n    t.getByRole('option', { name: pattern }),\n    t.getByRole('heading', { name: pattern }),\n    t.getByLabel(pattern),\n    t.getByPlaceholder(pattern),\n    t.getByText(pattern),\n  ];\n}\n\nasync function resolveNamed(scope: Scope, value: Match): Promise<Locator> {\n  const patterns = toPatterns(value);\n  for (const pattern of patterns) {\n    const locator = await firstVisible(namedLocators(scope, pattern));\n    try {\n      if (await locator.isVisible({ timeout: 200 })) return locator;\n    } catch {\n      // continue\n    }\n  }\n  return firstVisible(namedLocators(scope, patterns[0]));\n}\n\nasync function resolveField(scope: Scope, value: Match): Promise<Locator> {\n  const patterns = toPatterns(value);\n  for (const pattern of patterns) {\n    const locator = await firstVisible([\n      target(scope).getByLabel(pattern),\n      target(scope).getByPlaceholder(pattern),\n      target(scope).getByRole('textbox', { name: pattern }),\n      target(scope).getByRole('searchbox', { name: pattern }),\n      target(scope).getByRole('combobox', { name: pattern }),\n      target(scope).getByRole('spinbutton', { name: pattern }),\n    ]);\n    try {\n      if (await locator.isVisible({ timeout: 200 })) return locator;\n    } catch {\n      // continue\n    }\n  }\n  return firstVisible([\n    target(scope).getByRole('textbox'),\n    target(scope).locator('textarea'),\n    target(scope).getByRole('spinbutton'),\n  ]);\n}\n\nexport async function openHome(page: Page): Promise<void> {\n  await page.goto('/');\n}\n\nexport async function clickNamed(scope: Scope, value: Match): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  await locator.click();\n}\n\nexport async function clickFirstAvailable(scope: Scope, values: Match[]): Promise<void> {\n  for (const value of values) {\n    try {\n      const locator = await resolveNamed(scope, value);\n      if (await locator.isVisible({ timeout: 200 })) {\n        await locator.click();\n        return;\n      }\n    } catch {\n      // continue\n    }\n  }\n  await clickNamed(scope, values[0]);\n}\n\nexport async function hoverNamed(scope: Scope, value: Match): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  await locator.hover();\n}\n\nexport async function expectVisible(scope: Scope, value: Match): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  await expect(locator).toBeVisible();\n}\n\nexport async function expectTextsVisible(scope: Scope, values: Array<string | RegExp>): Promise<void> {\n  for (const value of values) {\n    await expectVisible(scope, value);\n  }\n}\n\nexport async function expectTextAbsent(scope: Scope, value: Match): Promise<void> {\n  const patterns = toPatterns(value);\n  await expect(target(scope).getByText(patterns[0])).toHaveCount(0);\n}\n\nexport async function fillField(scope: Scope, labelOrPlaceholder: Match, value: string): Promise<void> {\n  const locator = await resolveField(scope, labelOrPlaceholder);\n  await locator.fill(value);\n}\n\nexport async function pressEnter(scope: Scope, labelOrPlaceholder: Match): Promise<void> {\n  const locator = await resolveField(scope, labelOrPlaceholder);\n  await locator.press('Enter');\n}\n\nexport async function setCheckbox(scope: Scope, value: Match, checked: boolean): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  try {\n    if (checked) {\n      await locator.check();\n    } else {\n      await locator.uncheck();\n    }\n  } catch {\n    await locator.click();\n  }\n}\n\nexport async function setRadio(scope: Scope, value: Match): Promise<void> {\n  const locator = await resolveNamed(scope, value);\n  try {\n    await locator.check();\n  } catch {\n    await locator.click();\n  }\n}\n\nexport async function chooseOption(scope: Scope, field: Match, option: Match): Promise<void> {\n  const locator = await resolveField(scope, field);\n  try {\n    const direct = Array.isArray(option) ? option.find((item) => typeof item === 'string') : option;\n    if (typeof direct === 'string') {\n      await locator.selectOption({ label: direct });\n      return;\n    }\n  } catch {\n    // continue\n  }\n  await locator.click();\n  await clickNamed(scope, option);\n}\n\nexport async function expectFieldValue(scope: Scope, field: Match, expected: Match): Promise<void> {\n  const locator = await resolveField(scope, field);\n  const value = await locator.inputValue();\n  const patterns = toPatterns(expected);\n  if (!patterns.some((pattern) => pattern.test(value))) {\n    throw new Error(`Expected value to match ${patterns.map((item) => item.source).join(', ')}, got ${value}`);\n  }\n}\n\nexport async function expectHome(page: Page): Promise<void> {\n  await expectTextsVisible(page, [/search/i, /sign in/i, /cart/i]);\n}\n\nexport async function expectCartCount(page: Page): Promise<void> {\n  const cart = await firstVisible([\n    page.getByRole('link', { name: /cart/i }),\n    page.getByRole('button', { name: /cart/i }),\n  ]);\n  await expect(cart).toBeVisible();\n  await expect(cart).toContainText(/\\d+/);\n}\n\nexport async function carousel(page: Page): Promise<Locator> {\n  return firstVisible([\n    page.getByRole('region', { name: /carousel/i }),\n    page.getByRole('group', { name: /carousel/i }),\n    page.getByLabel(/carousel/i),\n  ]);\n}\n\nexport async function expectCarouselToChange(page: Page, action?: () => Promise<void>): Promise<void> {\n  const targetCarousel = await carousel(page);\n  await expect(targetCarousel).toBeVisible();\n  const before = await targetCarousel.screenshot();\n  if (action) await action();\n  await expect.poll(async () => {\n    const after = await targetCarousel.screenshot();\n    return !after.equals(before);\n  }, { timeout: 7_000, intervals: [250, 500, 1_000] }).toBe(true);\n}\n\nexport async function openCategoryMenu(page: Page): Promise<void> {\n  await hoverNamed(page, [FIXTURES.catalog.topCategory, /clothes/i]);\n}\n\nexport async function openCategoryPage(page: Page): Promise<void> {\n  await openHome(page);\n  await openCategoryMenu(page);\n  await clickFirstAvailable(page, [[FIXTURES.catalog.subcategory]]);\n}\n\nexport async function openSearchResults(page: Page): Promise<void> {\n  await openHome(page);\n  await clickFirstAvailable(page, [[/search/i]]);\n  await fillField(page, [/search/i], FIXTURES.catalog.searchKeyword);\n  await pressEnter(page, [/search/i]);\n}\n\nexport async function openProductDetail(page: Page, product: ProductFixture): Promise<void> {\n  await openCategoryPage(page);\n  await clickFirstAvailable(page, [[product.name]]);\n}\n\nexport async function ensureWishlistPrompt(page: Page): Promise<void> {\n  await expectTextsVisible(page, [/wishlist/i, /sign in/i, /login/i]);\n}\n\nexport async function openCart(page: Page): Promise<void> {\n  await clickFirstAvailable(page, [[/cart/i, /shopping cart/i]]);\n}\n\nexport async function openSignIn(page: Page): Promise<void> {\n  await openHome(page);\n  await clickFirstAvailable(page, [[/sign in/i, /login/i]]);\n}\n\nexport async function login(page: Page, account: AccountFixture = FIXTURES.accounts.login): Promise<void> {\n  await openSignIn(page);\n  await fillField(page, [/email/i], account.email);\n  await fillField(page, [/password/i], account.password);\n  await clickFirstAvailable(page, [[/sign in/i]]);\n}\n\nexport async function openMyAccount(page: Page, account: AccountFixture = FIXTURES.accounts.login): Promise<void> {\n  await login(page, account);\n  const accountEntry: Match[] = [/my account/i];\n  if (account.firstName) accountEntry.push(new RegExp(account.firstName, 'i'));\n  await clickFirstAvailable(page, accountEntry);\n}\n\nexport async function openAddressBook(page: Page, account: AccountFixture = FIXTURES.accounts.login): Promise<void> {\n  await openMyAccount(page, account);\n  await clickFirstAvailable(page, [[/addresses/i]]);\n}\n\nexport async function openOrderHistory(page: Page, account: AccountFixture = FIXTURES.accounts.login): Promise<void> {\n  await openMyAccount(page, account);\n  await clickFirstAvailable(page, [[/order history and details/i, /orders/i]]);\n}\n\nexport async function openWishlists(page: Page, account: AccountFixture = FIXTURES.accounts.login): Promise<void> {\n  await openMyAccount(page, account);\n  await clickFirstAvailable(page, [[/wishlist/i]]);\n}\n\nexport async function setProductQuantity(page: Page, quantity: string): Promise<void> {\n  await fillField(page, [/quantity/i], quantity);\n}\n\nexport async function addProductToCart(page: Page): Promise<void> {\n  await clickFirstAvailable(page, [[/add to cart/i]]);\n}\n\nexport async function openCartWithProduct(page: Page, product: ProductFixture): Promise<void> {\n  await openProductDetail(page, product);\n  await addProductToCart(page);\n  await clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await expectTextsVisible(page, [/shopping cart|cart summary|your cart/i]);\n}\n\nexport async function startCheckoutWithProduct(page: Page, product: ProductFixture): Promise<void> {\n  await openCartWithProduct(page, product);\n  await clickFirstAvailable(page, [[/proceed to checkout/i]]);\n  await expectTextsVisible(page, [/personal information|checkout/i]);\n}\n\nexport async function awaitDownload(action: () => Promise<void>, page: Page): Promise<Download> {\n  const downloadPromise = page.waitForEvent('download');\n  await action();\n  return downloadPromise;\n}\n"
+        }
+    ],
+    "public_downloads": null
+}

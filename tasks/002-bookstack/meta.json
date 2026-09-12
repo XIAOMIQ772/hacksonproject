@@ -1,0 +1,10 @@
+{
+  "id": "arc-bench-web--bookstack",
+  "display_id": "TASK-002",
+  "competition": "arc-bench-web",
+  "title": "BookStack Knowledge Base System",
+  "test_runner": "playwright",
+  "total_tests": 34,
+  "test_files": 35,
+  "fetched_at": "2026-09-12T09:47:00+0800"
+}

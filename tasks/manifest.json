@@ -1,0 +1,112 @@
+{
+  "competition": {
+    "id": "arc-bench-web",
+    "title": "ARC-Bench: Web Application",
+    "type": "demo",
+    "summary": "Build and evaluate web applications across six ARC-Bench tasks. A complete leaderboard score is calculated only when one submission has a completed run for every task in this competition.",
+    "task_count": 6,
+    "total_tests": 484,
+    "is_public": true,
+    "starts_at": "2026-09-10",
+    "ends_at": "2036-09-10",
+    "status": "open",
+    "notice": "Task packs are ready. Create a submission from this competition page.",
+    "template_required": false,
+    "template_source_competition_id": null,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "arc-bench-web--12306",
+        "display_id": "TASK-001",
+        "title": "Train Ticket Booking System",
+        "category": "web",
+        "summary": "A train ticket booking system that provides user authentication, ticket search and booking, order management, and travel information services.",
+        "test_runner": "playwright",
+        "total_tests": 138,
+        "module_count": 117,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--12306/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--12306/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-web--bookstack",
+        "display_id": "TASK-002",
+        "title": "BookStack Knowledge Base System",
+        "category": "web",
+        "summary": "Web-based knowledge base system for browsing, organizing, and reading shelves, books, chapters, and pages.",
+        "test_runner": "playwright",
+        "total_tests": 34,
+        "module_count": 34,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--bookstack/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--bookstack/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-web--ctrip",
+        "display_id": "TASK-003",
+        "title": "Ctrip Travel System",
+        "category": "web",
+        "summary": "A one-stop travel service platform that provides booking services for hotels, flights, tour packages, and related travel services. This requirement set focuses on user authentication and account management. Reference: Homepage ![image](./reference/index.jpg)",
+        "test_runner": "playwright",
+        "total_tests": 126,
+        "module_count": 133,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--ctrip/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--ctrip/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-web--keep",
+        "display_id": "TASK-004",
+        "title": "Keep",
+        "category": "web",
+        "summary": "Note management system for creating, organizing, searching, and configuring personal notes.",
+        "test_runner": "playwright",
+        "total_tests": 32,
+        "module_count": 32,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--keep/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--keep/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-web--prestashop",
+        "display_id": "TASK-005",
+        "title": "PrestaShop E-commerce Website",
+        "category": "web",
+        "summary": "PrestaShop B2C e-commerce website requirements covering storefront browsing, shopping cart, checkout, user authentication, and account management.",
+        "test_runner": "playwright",
+        "total_tests": 87,
+        "module_count": 86,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--prestashop/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--prestashop/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-web--stackoverflow",
+        "display_id": "TASK-006",
+        "title": "Stack Overflow Platform",
+        "category": "web",
+        "summary": "Web-based question and answer platform for developers that supports community knowledge sharing through asking, answering, searching, tagging, and reputation-driven participation.",
+        "test_runner": "playwright",
+        "total_tests": 67,
+        "module_count": 66,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--stackoverflow/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-web--stackoverflow/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-12T09:46:46+0800",
+  "dirs": {
+    "arc-bench-web--12306": "001-ticket-booking",
+    "arc-bench-web--bookstack": "002-bookstack",
+    "arc-bench-web--ctrip": "003-ctrip",
+    "arc-bench-web--keep": "004-keep",
+    "arc-bench-web--prestashop": "005-prestashop",
+    "arc-bench-web--stackoverflow": "006-stackoverflow"
+  }
+}
