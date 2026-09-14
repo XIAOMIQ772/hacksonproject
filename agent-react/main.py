@@ -7,10 +7,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnionParam
 
 from arcbench_agent_runtime import AgentRuntime
 
@@ -28,7 +29,7 @@ SYSTEM_PROMPT = """你是一个编程 agent，任务是实现一个 web 项目�
 MAX_STEPS = 120
 MAX_OUTPUT_CHARS = 16000
 
-TOOLS = [
+TOOLS: list[ChatCompletionToolUnionParam] = [
     {
         "type": "function",
         "function": {
@@ -292,7 +293,7 @@ def to_markdown(requirements: list[dict[str, Any]]) -> str:
 
 
 def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path) -> None:
-    messages: list[dict[str, Any]] = [
+    messages: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": "开始实现。"},
     ]
@@ -307,12 +308,14 @@ def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path)
         )
         message = response.choices[0].message
         # DeepSeek thinking mode requires reasoning_content echoed back on tool-call turns.
-        messages.append(message.model_dump(exclude_none=True))
+        messages.append(cast(ChatCompletionMessageParam, message.model_dump(exclude_none=True)))
 
         if not message.tool_calls:
             return
 
         for call in message.tool_calls:
+            if call.type != "function":
+                continue
             try:
                 args = json.loads(call.function.arguments or "{}")
             except json.JSONDecodeError:
