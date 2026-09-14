@@ -1,10 +1,16 @@
 use std::process::{Command, Stdio};
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::path::Component;
 use std::collections::HashSet;
-use std::fs;
+use std::fs::{self, File};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use serde_json::{Map, Value};
 const MAX_OUTPUT_CHARS:usize=16000;
+const BASH_TIMEOUT_SECS:u64=600;
+static BASH_SEQ:AtomicU64=AtomicU64::new(0);
 
 pub fn clip(text:&str)->String{
     if text.len()<MAX_OUTPUT_CHARS{
@@ -17,16 +23,76 @@ pub fn clip(text:&str)->String{
 }
 
 pub fn run_bash(command:&str,cwd:&str)->String{
-    let out=Command::new("bash").arg("-c").arg(command).current_dir(cwd).stdin(Stdio::null()).output();
-    match out{
-        Ok(output)=>{
-            let mut str=String::from_utf8_lossy(&output.stdout).into_owned();
-            str.push_str(&String::from_utf8_lossy(&output.stderr));
-            let clipped=clip(&str);
-            if clipped.is_empty(){"(no output)".to_string()}else{clipped}
+    let log_path=std::env::temp_dir()
+        .join(format!("agent-bash-{}-{}.log",std::process::id(),BASH_SEQ.fetch_add(1,Ordering::Relaxed)));
+    let log=match File::create(&log_path){Ok(file)=>file,Err(e)=>return format!("error: {e}")};
+    let err_log=match log.try_clone(){Ok(file)=>file,Err(e)=>return format!("error: {e}")};
+
+    let mut builder=Command::new("bash");
+    builder.arg("-c").arg(command)
+        .current_dir(cwd)
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(log))
+        .stderr(Stdio::from(err_log));
+    #[cfg(unix)]
+    builder.process_group(0);
+
+    let mut child=match builder.spawn(){
+        Ok(child)=>child,
+        Err(e)=>{
+            let _=fs::remove_file(&log_path);
+            return format!("error: {e}");
         }
-        Err(_)=>"something wrong".to_string()
+    };
+
+    let deadline=Instant::now()+Duration::from_secs(BASH_TIMEOUT_SECS);
+    let mut timed_out=false;
+    loop{
+        match child.try_wait(){
+            Ok(Some(_))=>break,
+            Ok(None)=>{
+                if Instant::now()>=deadline{
+                    timed_out=true;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(e)=>{
+                let _=fs::remove_file(&log_path);
+                return format!("error: {e}");
+            }
+        }
     }
+
+    if timed_out{
+        kill_group(child.id(),"-TERM");
+        for _ in 0..10{
+            std::thread::sleep(Duration::from_millis(100));
+            if matches!(child.try_wait(),Ok(Some(_))){break;}
+        }
+        kill_group(child.id(),"-KILL");
+        let _=child.wait();
+    }
+
+    let output=fs::read_to_string(&log_path).unwrap_or_default();
+    let _=fs::remove_file(&log_path);
+
+    if timed_out{
+        let mut message=format!("error: timed out after {BASH_TIMEOUT_SECS}s, killed process group");
+        if !output.is_empty(){
+            message.push('\n');
+            message.push_str(&clip(&output));
+        }
+        return message;
+    }
+
+    let clipped=clip(&output);
+    if clipped.is_empty(){"(no output)".to_string()}else{clipped}
+}
+
+#[cfg(unix)]
+fn kill_group(pid:u32,signal:&str){
+    let _=Command::new("kill").arg(signal).arg(format!("-{pid}")).status();
 }
 
 pub fn resolve(raw_path:&str,root:&Path)->PathBuf{
