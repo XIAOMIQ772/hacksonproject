@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,13 +23,33 @@ SYSTEM_PROMPT = """你是一个编程 agent，任务是实现一个 web 项目�
 测试: {tests}
 项目: {output}
 
-项目模板已就位: frontend/ 是 Vite + React 19 + TS + Tailwind 4，入口 frontend/src/pages/HomePage.tsx；backend/ 是 Express 5 + SQLite，单端口托管 frontend/dist。
-测试依赖的初始数据要写进 backend/src/database/seed_db.js（现在是空壳），再用 npm run db:prepare:e2e 准备 E2E 数据库。
+项目模板已就位: frontend/ 是 Vite + React 19 + TS + Tailwind 4；backend/ 是 Express 5 + SQLite，单端口托管 frontend/dist。测试初始数据写进 backend/src/database/seed_db.js，再用 npm run db:prepare:e2e 准备 E2E 库。
 
-分批读需求，逐步实现。需求里的文本、按钮名、label、placeholder 必须完全一致。完成后运行前端构建确认通过。"""
+流程：
+1. 先规划：通读需求（分批读）和需求引用的所有图片（read_image），然后写
+   {output}/PLAN.md（页面/路由/API 契约/表结构/文件清单）和 {output}/CHECKLIST.md
+   （需求逐条拆成 `- [ ]` 原子待办，覆盖每个可见文本、每条校验规则、每个交互细节）。
+2. 按 CHECKLIST 逐条实现，每完成一条把 `- [ ]` 改成 `- [x]`。
+3. 自验：npm install（前后端）、前端 build、起后端；能找到 *.spec.* 就
+   npx playwright test 并按失败迭代修复，找不到也至少保证构建通过、后端能起。
+
+实现要点（评测断言普遍依赖，逐条遵守）：
+- 文本/label/按钮名与需求逐字一致；控件与 <label htmlFor> 原生关联。
+- 语义角色用对：链接用 <a>/<Link>，按钮用 <button>，强度/进度用量表 <meter>
+  （配 aria-label，值随输入实时变）。
+- 错误消息渲染进 role="alert" 可见元素；input 不加 required（原生校验会拦截提交）。
+- 需求要求"页面显示"的动态值渲染为独立元素的精确文本，不拼前缀后缀；
+  同一 href 页面只出现一个链接。
+- 别重写脚手架：package.json、lock、配置文件、index.html、main.tsx、
+  backend/src/index.js、backend/src/database/* 保持原样；Express 5 不支持
+  app.get('*')，SPA fallback 用模板自带的正则写法。"""
 
 MAX_STEPS = 120
 MAX_OUTPUT_CHARS = 16000
+REASONING_EFFORT = os.environ.get("REASONING_EFFORT", "medium")
+MAX_CHECKLIST_NUDGES = 3
+VISION_MODEL = os.environ.get("ARC_VISION_MODEL", "glm-5.3")
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 
 TOOLS: list[ChatCompletionToolUnionParam] = [
     {
@@ -46,13 +68,29 @@ TOOLS: list[ChatCompletionToolUnionParam] = [
         "type": "function",
         "function": {
             "name": "read",
-            "description": "读文件，带行号返回。路径是目录则列出内容。大文件用 offset/limit 分段读。",
+            "description": "读文本文件，带行号返回。路径是目录则列出内容。大文件用 offset/limit 分段读。图片请用 read_image。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {"type": "string", "description": "绝对路径"},
                     "offset": {"type": "integer", "description": "起始行号，从 1 开始"},
                     "limit": {"type": "integer", "description": "读取行数"},
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_image",
+            "description": "读取图片文件（png/jpg/jpeg/webp/gif），调用视觉模型返回图片的文字描述。用于参考图。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "图片绝对路径"},
+                    "prompt": {"type": "string", "description":
+                               "可选，告诉视觉模型要重点提取什么，例如 '逐字列出所有分区标题和表单字段名'"},
                 },
                 "required": ["path"],
             },
@@ -116,6 +154,40 @@ def resolve(raw_path: str, root: Path) -> Path:
     return (path if path.is_absolute() else root / raw_path).resolve()
 
 
+_vision_client: OpenAI | None = None
+
+
+DEFAULT_IMAGE_PROMPT = (
+    "这是网页设计参考图。请详细描述：所有分区标题、表单字段名、按钮文字、"
+    "下拉框默认值、提示文字、布局结构。逐字给出图中所有可见文字。"
+)
+
+
+def describe_image(path: Path, prompt: str = "") -> str:
+    """Return a text description of a reference image via a vision model."""
+    global _vision_client
+    if _vision_client is None:
+        base_url = os.environ.get("VISUAL_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
+        kwargs: dict[str, Any] = {"timeout": 120.0, "max_retries": 2}
+        if base_url:
+            kwargs["base_url"] = base_url
+        api_key = os.environ.get("VISUAL_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        if api_key:
+            kwargs["api_key"] = api_key
+        _vision_client = OpenAI(**kwargs)
+    data = base64.b64encode(path.read_bytes()).decode()
+    model = os.environ.get("VISUAL_MODEL") or VISION_MODEL
+    resp = _vision_client.chat.completions.create(
+        model=model,
+        max_tokens=2000,
+        messages=[{"role": "user", "content": [
+            {"type": "text", "text": prompt.strip() or DEFAULT_IMAGE_PROMPT},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{data}"}},
+        ]}],
+    )
+    return resp.choices[0].message.content or "(empty description)"
+
+
 def run_read(args: dict[str, Any], root: Path) -> str:
     path = resolve(str(args.get("path") or ""), root)
     if path.is_dir():
@@ -128,6 +200,8 @@ def run_read(args: dict[str, Any], root: Path) -> str:
         return clip("\n".join(entries)) or "(empty directory)"
     if not path.is_file():
         return f"error: {path} does not exist"
+    if path.suffix.lower() in IMAGE_EXTS:
+        return "binary image file; use the read_image tool to get a description"
 
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     start = max(1, int(args.get("offset") or 1))
@@ -170,11 +244,25 @@ def run_edit(args: dict[str, Any], root: Path) -> str:
     return f"edited {path}"
 
 
+def run_read_image(args: dict[str, Any], root: Path) -> str:
+    path = resolve(str(args.get("path") or ""), root)
+    if not path.is_file():
+        return f"error: {path} does not exist"
+    if path.suffix.lower() not in IMAGE_EXTS:
+        return f"error: unsupported image type {path.suffix or '(none)'}"
+    try:
+        return describe_image(path, str(args.get("prompt") or ""))
+    except Exception as exc:
+        return f"error describing image: {exc}"
+
+
 def dispatch_tool(name: str, args: dict[str, Any], root: Path) -> str:
     if name == "bash":
         return run_bash(str(args.get("command") or ""), root)
     if name == "read":
         return run_read(args, root)
+    if name == "read_image":
+        return run_read_image(args, root)
     if name == "write":
         return run_write(args, root)
     if name == "edit":
@@ -182,12 +270,19 @@ def dispatch_tool(name: str, args: dict[str, Any], root: Path) -> str:
     return f"error: unknown tool {name}"
 
 
-def find_tests_dir(output_dir: Path) -> str:
-    # The template's backend/playwright.config.js sets testDir './test-e2e', but that
-    # directory is absent from the template: the platform may only inject the specs
-    # there after the agent exits.
-    candidate = output_dir / "backend" / "test-e2e"
-    return str(candidate) if candidate.is_dir() else ""
+def find_tests_dir(output_dir: Path, requirements_dir: Path) -> str:
+    """Locate the e2e spec dir when it is already mounted. Returns '' otherwise —
+    the prompt tells the agent to `find` for *.spec.* itself, so this is only a hint."""
+    env_dir = os.environ.get("ARCBENCH_TESTS_DIR", "").strip()
+    candidates = [Path(env_dir)] if env_dir else []
+    candidates += [
+        output_dir / "backend" / "test-e2e",   # template playwright.config testDir
+        requirements_dir / "tests",            # task packs that ship tests inside
+    ]
+    for candidate in candidates:
+        if candidate.is_dir() and list(candidate.rglob("*.spec.*")):
+            return str(candidate)
+    return ""
 
 
 def read_requirements_data(requirements_dir: Path) -> Any:
@@ -292,18 +387,39 @@ def to_markdown(requirements: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path) -> None:
+def checklist_progress(output_dir: Path) -> tuple[int, int]:
+    checklist = output_dir / "CHECKLIST.md"
+    if not checklist.is_file():
+        return 0, 0
+    lines = checklist.read_text(encoding="utf-8").splitlines()
+    done = sum(1 for l in lines if re.match(r"^\s*-\s*\[[xX]\]", l))
+    todo = sum(1 for l in lines if re.match(r"^\s*-\s*\[\s*\]", l))
+    return done, done + todo
+
+
+def unchecked_checklist_items(output_dir: Path) -> list[str]:
+    checklist = output_dir / "CHECKLIST.md"
+    if not checklist.is_file():
+        return []
+    return [line.strip() for line in checklist.read_text(encoding="utf-8").splitlines()
+            if re.match(r"^\s*-\s*\[\s*\]", line)]
+
+
+def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path,
+               events=None) -> None:
     messages: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": "开始实现。"},
     ]
+    nudges = 0
+    last_progress = ""
 
-    for _ in range(MAX_STEPS):
+    for step in range(MAX_STEPS):
         response = client.chat.completions.create(
             model=model,
             messages=messages,
             tools=TOOLS,
-            reasoning_effort="low",
+            reasoning_effort=REASONING_EFFORT,
             extra_body={"thinking": {"type": "enabled"}},
         )
         message = response.choices[0].message
@@ -311,11 +427,26 @@ def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path)
         messages.append(cast(ChatCompletionMessageParam, message.model_dump(exclude_none=True)))
 
         if not message.tool_calls:
+            remaining = unchecked_checklist_items(output_dir)
+            if remaining and nudges < MAX_CHECKLIST_NUDGES:
+                nudges += 1
+                print(f"[done-gate] {len(remaining)} checklist items left, nudging", flush=True)
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"CHECKLIST.md 还有 {len(remaining)} 项未完成：\n"
+                        + "\n".join(remaining[:25])
+                        + "\n继续实现这些项并把对应 `- [ ]` 改成 `- [x]`。"),
+                })
+                continue
+            print(f"[done] finished after {step + 1} steps", flush=True)
             return
 
         for call in message.tool_calls:
             if call.type != "function":
                 continue
+            preview = (call.function.arguments or "")[:140].replace("\n", " ")
+            print(f"[step {step + 1}] {call.function.name} {preview}", flush=True)
             try:
                 args = json.loads(call.function.arguments or "{}")
             except json.JSONDecodeError:
@@ -323,6 +454,17 @@ def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path)
             else:
                 result = dispatch_tool(call.function.name, args, output_dir)
             messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+
+        done, total = checklist_progress(output_dir)
+        progress = f"[progress] step {step + 1}, checklist {done}/{total}" if total else f"[progress] step {step + 1}"
+        if progress != last_progress:
+            last_progress = progress
+            print(progress, flush=True)
+        if events is not None:
+            try:
+                events._emit_refresh_signal(reason="agent_step", logs=True)
+            except Exception:
+                pass
 
     raise RuntimeError(f"react loop exceeded {MAX_STEPS} steps")
 
@@ -348,8 +490,18 @@ def copy_template(template_dir: Path, output_dir: Path) -> None:
             shutil.copy2(source, destination)
 
 
+def copy_task_assets(requirements_dir: Path, output_dir: Path) -> None:
+    """Copy non-code assets referenced by the requirements (images, docs) into the
+    output dir so relative reads like './reference/x.png' resolve for the agent."""
+    for name in ("reference", "references", "assets"):
+        src = requirements_dir / name
+        if src.is_dir():
+            shutil.copytree(src, output_dir / name, dirs_exist_ok=True)
+
+
 def run_agent(runtime: AgentRuntime, requirements_dir: Path, output_dir: Path) -> None:
     copy_template(Path(__file__).resolve().parent / "template", output_dir)
+    copy_task_assets(requirements_dir, output_dir)
 
     runtime.events.mark_run_started("agent run started")
     runtime.traceability.init_db()
@@ -391,10 +543,10 @@ def run_agent(runtime: AgentRuntime, requirements_dir: Path, output_dir: Path) -
 
         system_prompt = SYSTEM_PROMPT.format(
             requirements=requirements_ref,
-            tests=find_tests_dir(output_dir) or "评测时注入 backend/test-e2e/，当前不可见",
+            tests=find_tests_dir(output_dir, requirements_dir) or "评测时注入 backend/test-e2e/，当前不可见",
             output=output_dir,
         )
-        react_loop(client, model, system_prompt, output_dir)
+        react_loop(client, model, system_prompt, output_dir, events=runtime.events)
 
         for req in requirements:
             runtime.events.mark_implementation_done(req["id"], "implemented")
