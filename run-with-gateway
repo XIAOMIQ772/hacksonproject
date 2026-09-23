@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ ! -f "$repo_dir/.env" ]; then
+  echo "missing $repo_dir/.env; copy .env.example and add the API key" >&2
+  exit 1
+fi
+
+set -a
+. "$repo_dir/.env"
+set +a
+
+exec "$@"
