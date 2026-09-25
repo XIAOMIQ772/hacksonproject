@@ -1,4 +1,4 @@
 ./arcbench-agent-runtime
-openai==3.19.0
-openai-codex==0.156.1
+openai==3.18.0
+openai-codex==0.155.1
 PyYAML==6.0.3

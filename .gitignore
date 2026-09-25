@@ -3,4 +3,7 @@ __pycache__/
 .DS_Store
 .env
 runs/
+local-runs/
+/*.har
+/Archive.zip
 .venv-agent/

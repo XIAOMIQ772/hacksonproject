@@ -8,6 +8,6 @@ module.exports = defineConfig({
   timeout: 30000,
   use: {
     baseURL,
-    trace: 'retain-on-failure',
+    trace: 'off',
   },
 });
