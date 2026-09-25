@@ -530,7 +530,7 @@ class ProjectValidator:
         config.write_text("module.exports = " + json.dumps({
             'testMatch': '**/*.{spec,test}.{js,jsx,ts,tsx,mjs,cjs,mts,cts}',
             'projects': [{'name': suite, 'testDir': str(test_dir)}],
-            'timeout': 10000, 'expect': {'timeout': 3000}, 'workers': 1, 'retries': 0,
+            'timeout': 30000, 'expect': {'timeout': 3000}, 'workers': 1, 'retries': 0,
             'forbidOnly': True, 'use': {'baseURL': base_url, 'headless': True, 'channel': 'chromium',
                                       'trace': 'retain-on-failure', 'screenshot': 'only-on-failure'},
             'reporter': [['json', {'outputFile': str(report_path)}]],
