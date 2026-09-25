@@ -7,3 +7,6 @@ local-runs/
 /*.har
 /Archive.zip
 .venv-agent/
+.venv/
+*.egg-info/
+/agent/arcbench-agent-runtime/build/

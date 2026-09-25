@@ -1,3 +1,0 @@
-./arcbench-agent-runtime
-openai
-pyyaml

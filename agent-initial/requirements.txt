@@ -1,2 +1,0 @@
-./arcbench-agent-runtime
-openai
