@@ -345,18 +345,18 @@ class ProjectValidator:
         """Start a new evidence set after the harness requests an independent source check.
 
         Self-authored checks may contain wrong expectations. The audit can correct
-        those before its first verification; subsequent checks freeze them again.
+        those before its first successful verification, which freezes them again.
         """
         self.run_id = uuid.uuid4().hex[:12]
         self.round = 0
         self._baseline.clear()
 
-    def _check_baseline(self) -> list[str]:
-        """Freeze files observed at verify, including assertion/fixture helpers.
+    def _check_baseline(self, *, freeze: bool = True) -> list[str]:
+        """Check frozen files and optionally capture assertion/fixture helpers.
 
         New files are allowed; existing files must be restored byte for byte.
-        Invalid contracts remain editable until schema and source obligations
-        pass. This guards one validator session, not an OS security boundary.
+        Newly captured files are tentative until the whole verification passes.
+        This guards one validator session, not an OS security boundary.
         """
         errors: list[str] = []
         candidates: dict[str, bytes] = {}
@@ -403,9 +403,10 @@ class ProjectValidator:
                 errors.append(f'Frozen validation file modified: {name}. '
                               f'Restore the original from {snapshots / name}; fix application code instead. '
                               'New test files may be added; a change log does not authorize rewriting frozen checks.')
-        for name, content in candidates.items():
-            if name not in self._baseline:
-                self._baseline[name] = content
+        if freeze:
+            for name, content in candidates.items():
+                if name not in self._baseline:
+                    self._baseline[name] = content
         # Recreate the audit copies from memory so editing/deleting the manifest
         # or recovery files cannot rebaseline a running generation session.
         baseline_dir.mkdir(parents=True, exist_ok=True)
@@ -424,6 +425,7 @@ class ProjectValidator:
         evidence = self.output / '.arc/validation' / self.run_id / f'round-{self.round:03d}'
         evidence.mkdir(parents=True, exist_ok=True)
         result = ValidationResult(evidence_dir=str(evidence), suite_kind='self-authored')
+        verified_baseline = dict(self._baseline)
         try:
             result.errors.extend(self._check_baseline())
             if not result.errors:
@@ -435,6 +437,11 @@ class ProjectValidator:
         result.ok = (not result.errors and bool(result.tests)
                      and all(check['returncode'] == 0 for check in result.checks)
                      and all(test['passed'] for test in result.tests))
+        if not result.ok:
+            # Capture during execution to detect tampering, but do not permanently
+            # freeze checks whose assumptions have never passed a real run.
+            self._baseline = verified_baseline
+            self._check_baseline(freeze=False)
         (evidence / 'summary.json').write_text(json.dumps(asdict(result), ensure_ascii=False, indent=2))
         print(f'[validation] suite={result.suite_kind} ok={result.ok} '
               f'passed={sum(t["passed"] for t in result.tests)} total={len(result.tests)} '

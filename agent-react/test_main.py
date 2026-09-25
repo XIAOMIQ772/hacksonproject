@@ -58,6 +58,38 @@ class DeliveryTests(unittest.TestCase):
             spec.write_text("expect(heading).toBeVisible()")
             self.assertTrue(validator._check_baseline(), "audit must not permit later weakening")
 
+    def test_failed_verification_does_not_freeze_unproven_test_expectations(self):
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+            root = Path(tmp)
+            folder = root / "backend/agent-smoke-tests"
+            folder.mkdir(parents=True)
+            spec = folder / "organization.spec.js"
+            spec.write_text("expect(heading).toHaveText(displayName)")
+            validator = ProjectValidator(root, folder)
+
+            def run_suite(result, evidence):
+                result.tests.append({"title": "organization heading", "passed": "identifier" in spec.read_text(),
+                                     "error": "heading differs from expected identifier"})
+
+            with patch.object(validator, "_validate", side_effect=run_suite) as run:
+                self.assertFalse(validator.validate().ok)
+                spec.write_text("expect(heading).toHaveText(identifier)")
+                self.assertTrue(validator.validate().ok, "failed checks must remain correctable from the source")
+                spec.write_text("expect(heading).toBeVisible()")
+                rejected = validator.validate()
+                self.assertFalse(rejected.ok, "passing coverage must remain frozen")
+                self.assertTrue(any("Frozen validation file modified" in error for error in rejected.errors))
+                self.assertEqual(run.call_count, 2, "reject weakened checks before executing them")
+
+            validator.begin_source_audit()
+            def rewrite_during_execution(result, evidence):
+                spec.write_text("test.skip('organization heading')")
+                result.tests.append({"title": "organization heading", "passed": True})
+            with patch.object(validator, "_validate", side_effect=rewrite_during_execution):
+                rejected = validator.validate()
+                self.assertFalse(rejected.ok, "execution must not rewrite an unfrozen test either")
+                self.assertTrue(any("Frozen validation file modified" in error for error in rejected.errors))
+
     def test_prepared_runner_application_is_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
