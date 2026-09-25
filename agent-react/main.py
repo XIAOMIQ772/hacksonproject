@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 from openai.types.chat import ChatCompletionToolUnionParam
 
 from arcbench_agent_runtime import AgentRuntime
@@ -503,6 +503,21 @@ def response_function_calls(response: Any) -> list[Any]:
             if response_item_value(item, "type") == "function_call"]
 
 
+def request_model_completion(create: Any, request: dict[str, Any]) -> Any:
+    # The observed proxy wraps upstream connection resets in HTTP 400, which
+    # the SDK does not retry. Retry only that transport failure, before tools run.
+    for attempt in range(3):
+        try:
+            return create(**request)
+        except BadRequestError as error:
+            if (error.code != "proxy_error" or "connection reset by peer" not in error.message
+                    or attempt == 2):
+                raise
+            delay = 2 ** attempt
+            print(f"[agent] model proxy connection reset; retry {attempt + 1}/2 in {delay}s", flush=True)
+            time.sleep(delay)
+
+
 def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path,
                validator: ProjectValidator) -> ValidationResult:
     wire_api = selected_wire_api()
@@ -531,14 +546,14 @@ def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path,
                                include=["reasoning.encrypted_content"])
                 if reasoning_effort:
                     request["reasoning"] = {"effort": reasoning_effort}
-                response = client.responses.create(**request)
+                response = request_model_completion(client.responses.create, request)
             else:
                 request.update(messages=messages, tools=TOOLS)
                 if deepseek_chat:
                     request["extra_body"] = {"thinking": {"type": deepseek_thinking_type()}}
                 if reasoning_effort:
                     request["reasoning_effort"] = reasoning_effort
-                response = client.chat.completions.create(**request)
+                response = request_model_completion(client.chat.completions.create, request)
         except Exception as error:
             # Never deliver a stale success: tools may have changed files since
             # verify. Recheck current output without making another model call.

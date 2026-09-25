@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from openai import BadRequestError
+
 import main
 from agent_validation import ProjectValidator, ValidationResult
 
@@ -19,6 +21,50 @@ def completion(calls=None):
 
 
 class DeliveryTests(unittest.TestCase):
+    def test_proxy_reset_retries_same_step_before_executing_tools(self):
+        error = BadRequestError("upstream read: connection reset by peer",
+                                response=Mock(status_code=400, headers={}),
+                                body={"code": "proxy_error"})
+        call = SimpleNamespace(type="function", id="write-1", function=SimpleNamespace(
+            name="write", arguments='{"path":"app.js","content":"implementation"}'))
+        create = Mock(side_effect=[error, completion([call]), completion(), completion()])
+        client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+        validator = Mock()
+        validator.validate.return_value = ValidationResult(ok=True, suite_kind="self-authored")
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(os.environ, {"AGENT_MAX_STEPS": "3", "OPENAI_WIRE_API": "chat"}), \
+                patch.object(main.time, "sleep") as sleep, \
+                patch.object(main, "dispatch_tool", return_value="written") as dispatch, \
+                contextlib.redirect_stdout(io.StringIO()):
+            result = main.react_loop(client, "deepseek-v4-pro", "source", Path(tmp), validator)
+        self.assertTrue(result.ok)
+        self.assertEqual(create.call_count, 4)
+        dispatch.assert_called_once()
+        sleep.assert_called_once_with(1)
+        self.assertEqual(validator.validate.call_count, 2)
+
+    def test_proxy_retry_is_bounded_and_other_bad_requests_fail_immediately(self):
+        for code, message, attempts in [
+            ("proxy_error", "read: connection reset by peer", 3),
+            ("proxy_error", "unsupported model", 1),
+            ("invalid_request_error", "invalid parameter: connection reset by peer", 1),
+        ]:
+            with self.subTest(code=code, message=message):
+                error = BadRequestError(message, response=Mock(status_code=400, headers={}),
+                                        body={"code": code})
+                create = Mock(side_effect=error)
+                client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+                validator = Mock()
+                with tempfile.TemporaryDirectory() as tmp, \
+                        patch.dict(os.environ, {"AGENT_MAX_STEPS": "3", "OPENAI_WIRE_API": "chat"}), \
+                        patch.object(main.time, "sleep") as sleep, \
+                        contextlib.redirect_stdout(io.StringIO()), \
+                        self.assertRaises(BadRequestError):
+                    main.react_loop(client, "deepseek-v4-pro", "source", Path(tmp), validator)
+                self.assertEqual(create.call_count, attempts)
+                self.assertEqual(sleep.call_count, attempts - 1)
+                validator.validate.assert_not_called()
+
     def test_passing_self_tests_start_a_fresh_requirement_audit(self):
         requests = []
         responses = iter([completion(), completion()])
