@@ -1,0 +1,4 @@
+interface:
+  display_name: "ARC Bench TDD"
+  short_description: "Write one requirement's test, then make it pass."
+  default_prompt: "Use $arcbench-tdd to implement the assigned requirement test-first and report progress."

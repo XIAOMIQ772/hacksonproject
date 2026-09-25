@@ -25,7 +25,7 @@ BUILD_LOG="${ARC_DIR}/frontend-build.log"
 SEED_LOG="${ARC_DIR}/seed.log"
 PW_INSTALL_LOG="${ARC_DIR}/pw-install.log"
 
-if [ -n "$SPEC" ] && ! printf '%s' "$SPEC" | grep -Eq '^REQ-[0-9.]+$'; then
+if [ -n "$SPEC" ] && ! printf '%s' "$SPEC" | grep -Eq '^REQ-[0-9]+([.-][0-9]+)*$'; then
   echo "bad spec id: $SPEC"
   exit 2
 fi
