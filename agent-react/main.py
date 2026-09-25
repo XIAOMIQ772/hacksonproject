@@ -86,6 +86,7 @@ SYSTEM_PROMPT = """你是负责完整交付的编程 agent，根据原始需求�
    图标状态、错误提示、撤销完成文案按需求精确断言；确认无效输入时没有部分写入，不能只断言错误文字。
    helper、fixture、测试数据源放在 agent-smoke-tests 内，运行证据放 evidence_dir。
    每次 verify 开始冻结已有自测及 helper，即使构建失败也不能删改；可新增用例。首次 verify 前按原文审查测试前提，避免冻结猜测。
+   系统启动新的需求复核阶段时会重新建立基线。该阶段首次 verify 前，可以依据原文纠正旧自测的错误预期，并记录原文和修改理由；不得删除需求覆盖或绕过场景。
    如误改冻结文件，从 .arc/validation/<run-id>/baseline-files 恢复原文。磁盘清单不决定基线，修改 JSON 不能解除冻结。
    verify 独立构建、检查 seed、用空数据库启动，再运行 UI 契约和业务自测，两套分别冷启动。UI 标签数量不算业务覆盖。
    Chromium 缺失时在 backend 运行 npx playwright install chromium，Linux 缺库加 --with-deps。
@@ -104,7 +105,8 @@ SOURCE_AUDIT_PROMPT = """现在开始需求复核。已有代码和自测可运�
 拒绝、取消、刷新、重新登录、跨对象隔离；种子对象与新建对象；重复场景背后的不同分支。
 例如原文要求标题显示 identifier，测试不能只断言 display name；组织的仓库不能用个人仓库替代。
 在 backend/agent-smoke-tests 新增遗漏场景，运行它看到失败后修复产品代码，再用 verify 全量验证。
-保留已有冻结测试；如果已有测试本身违反原文，报告具体原文和冲突，不要为了通过测试违背需求。
+本阶段首次 verify 前，逐项纠正已有自测中违反原文的预期，并记录原文、旧断言、正确断言及理由。
+不能删除需求覆盖、跳过用例、放宽角色或用实现细节取代可见行为；首次 verify 后新的测试基线会冻结。
 把逐项依据、补测和实际结果写入 .arc/source-audit.md，完成全部原子需求复核后再结束。
 """
 
@@ -588,6 +590,7 @@ def react_loop(client: OpenAI, model: str, system_prompt: str, output_dir: Path,
                 if not auditing_source:
                     auditing_source = True
                     last_verified = None
+                    validator.begin_source_audit()
                     messages = [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": SOURCE_AUDIT_PROMPT},

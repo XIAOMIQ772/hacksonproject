@@ -341,6 +341,16 @@ class ProjectValidator:
         # this validator's memory, never reload it from the generated project.
         self._baseline: dict[str, bytes] = {}
 
+    def begin_source_audit(self) -> None:
+        """Start a new evidence set after the harness requests an independent source check.
+
+        Self-authored checks may contain wrong expectations. The audit can correct
+        those before its first verification; subsequent checks freeze them again.
+        """
+        self.run_id = uuid.uuid4().hex[:12]
+        self.round = 0
+        self._baseline.clear()
+
     def _check_baseline(self) -> list[str]:
         """Freeze files observed at verify, including assertion/fixture helpers.
 

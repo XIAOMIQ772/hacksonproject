@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import main
-from agent_validation import ValidationResult
+from agent_validation import ProjectValidator, ValidationResult
 
 
 def completion(calls=None):
@@ -39,6 +39,24 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(len(requests[1]["messages"]), 2, "audit must not inherit implementation reasoning")
         self.assertIn(".arc/requirements", requests[1]["messages"][1]["content"])
         self.assertEqual(validator.validate.call_count, 2)
+        validator.begin_source_audit.assert_called_once()
+
+    def test_audit_can_correct_wrong_self_test_then_freezes_new_expectation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "backend/agent-smoke-tests"
+            folder.mkdir(parents=True)
+            spec = folder / "organization.spec.js"
+            spec.write_text("expect(heading).toHaveText(displayName)")
+            validator = ProjectValidator(root, folder)
+            self.assertEqual(validator._check_baseline(), [])
+            first_id = validator.run_id
+            validator.begin_source_audit()
+            spec.write_text("expect(heading).toHaveText(identifier)")
+            self.assertEqual(validator._check_baseline(), [])
+            self.assertNotEqual(first_id, validator.run_id)
+            spec.write_text("expect(heading).toBeVisible()")
+            self.assertTrue(validator._check_baseline(), "audit must not permit later weakening")
 
     def test_prepared_runner_application_is_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
