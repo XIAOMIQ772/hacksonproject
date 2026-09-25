@@ -126,11 +126,11 @@ def request(url: str, cookie: str, retries: int = 3) -> tuple[bytes, str]:
                 time.sleep(2 ** attempt)
                 continue
             raise ApiError(f"{e.code} on {url}: {body.decode('utf-8', 'replace')}", status=e.code)
-        except urllib.error.URLError as e:
+        except OSError as e:
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
                 continue
-            raise ApiError(f"network error on {url}: {e.reason}")
+            raise ApiError(f"network error on {url}: {getattr(e, 'reason', e)}")
     raise ApiError(f"unreachable: {url}")
 
 
@@ -165,8 +165,8 @@ def _open(req: urllib.request.Request):
     except urllib.error.HTTPError as e:
         detail = e.read()[:300].decode("utf-8", "replace")
         raise ApiError(f"{e.code} on {req.full_url}: {detail}", status=e.code)
-    except urllib.error.URLError as e:
-        raise ApiError(f"network error on {req.full_url}: {e.reason}")
+    except OSError as e:
+        raise ApiError(f"network error on {req.full_url}: {getattr(e, 'reason', e)}")
 
 
 def _json_headers(cookie: str | None, content_type: str | None = None) -> dict:

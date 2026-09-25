@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import http.client
 import io
 import json
 import os
@@ -13,6 +14,19 @@ import arc_fetch as arc
 
 
 class PlatformContractTests(unittest.TestCase):
+    def test_disconnects_retry_reads_but_never_duplicate_posts(self):
+        response = io.BytesIO(b'{}')
+        response.headers = {"content-type": "application/json"}
+        disconnected = http.client.RemoteDisconnected("Remote end closed connection")
+        with patch.object(arc.urllib.request, "urlopen", side_effect=[disconnected, response]) as request, \
+                patch.object(arc.time, "sleep"):
+            self.assertEqual(arc.get_json("https://example.invalid", "session"), {})
+            self.assertEqual(request.call_count, 2)
+        with patch.object(arc.urllib.request, "urlopen", side_effect=disconnected) as request:
+            with self.assertRaises(arc.ApiError):
+                arc.post_empty("https://example.invalid/start", "session")
+            self.assertEqual(request.call_count, 1, "ambiguous writes require state reconciliation")
+
     def test_hidden_tests_do_not_abort_requirement_download(self):
         with tempfile.TemporaryDirectory() as tmp:
             replies = [
