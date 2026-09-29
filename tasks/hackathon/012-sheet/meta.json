@@ -1,0 +1,11 @@
+{
+  "id": "hackathon--sheet",
+  "display_id": "TASK-012",
+  "competition": "hackathon",
+  "title": "Core Requirements for an Online Spreadsheet Data Workspace",
+  "test_runner": "playwright",
+  "total_tests": 100,
+  "test_files": 0,
+  "tests_available": false,
+  "fetched_at": "2026-09-29T17:47:06+0800"
+}

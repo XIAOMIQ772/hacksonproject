@@ -1,0 +1,9 @@
+{
+    "files": [
+        {
+            "path": "REQ-1.spec.ts",
+            "content": "import { test, expect } from '@playwright/test';\n\ntest('REQ-1: Display the default home page', async ({ page }) => {\n  await page.goto('/');\n});\n"
+        }
+    ],
+    "public_downloads": null
+}

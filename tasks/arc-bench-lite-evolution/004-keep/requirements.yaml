@@ -1,0 +1,117 @@
+id: ROOT
+name: Keep Evolution
+type: FOLDER
+description: ARC-Bench-Lite evolution requirements for the Keep note management system. The task starts from a completed Keep implementation from ARC-Bench-Lite and applies changed and new requirements based on real Google Keep behavior while preserving existing note creation, search, labels, archive, and settings behavior.
+dependencies: []
+children:
+- id: REQ-7.1
+  name: Search by note type
+  type: ATOMIC
+  change_type: CHANGE
+  original_requirement_id: REQ-3.1
+  dependencies:
+  - REQ-3.1
+  - REQ-8.1
+  - REQ-8.2
+  description: 'Extend the existing suggested-search-filter panel so it can filter notes by note type. Reference image: ![image](./reference/list_reminder.png). Seed data: ordinary note `Groceries`, checklist note `Packing checklist` with items `Passport` and `Charger`, and reminder note `Call dentist` with reminder `Tomorrow`. Add type filters named `Lists` and `Reminders`. Selecting `Lists` shows `Packing checklist` and hides ordinary text note `Groceries`; selecting `Reminders` shows `Call dentist` and hides notes without reminders.'
+  scenarios:
+  - name: Filter search results by note type
+    steps:
+    - keyword: GIVEN
+      content: The user is on the Keep home page and the system contains Groceries, Packing checklist, and Call dentist.
+    - keyword: WHEN
+      content: The user focuses the Search field and selects the Lists type filter.
+    - keyword: THEN
+      content: Packing checklist is visible and Groceries is absent from the filtered notes list.
+    - keyword: WHEN
+      content: The user selects the Reminders type filter.
+    - keyword: THEN
+      content: Call dentist is visible and notes without reminders are absent from the filtered notes list.
+- id: REQ-7.2
+  name: Control checked checklist item placement
+  type: ATOMIC
+  change_type: CHANGE
+  original_requirement_id: REQ-4.2
+  dependencies:
+  - REQ-4.2
+  - REQ-8.1
+  description: 'Extend the existing detailed settings behavior so the `Move checked items to bottom` option controls checklist item placement. Reference image: ![image](./reference/settings_settings.png). Seed data: `Packing checklist` contains unchecked items `Passport` followed by `Charger`. When the option is disabled, checking `Passport` keeps it before `Charger` while marking it completed; when enabled, checked items move below unchecked items.'
+  scenarios:
+  - name: Keep checked checklist items in place when the setting is disabled
+    steps:
+    - keyword: GIVEN
+      content: The user has the Packing checklist note with unchecked Passport and Charger items in that order.
+    - keyword: WHEN
+      content: The user opens Settings, disables Move checked items to bottom, saves, and checks Passport.
+    - keyword: THEN
+      content: Passport remains before Charger and is marked completed.
+- id: REQ-8.1
+  name: Checklist notes
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-2.2
+  - REQ-2.4
+  description: 'Add support for checklist notes from the existing note editor. Reference image: ![image](./reference/checklist.png). The `Note editor` must provide a checklist/list action, allow the title `Packing checklist` and two items `Passport` and `Charger`, and save the note. The saved note exposes both items as checkboxes; checking `Passport` keeps it visible as completed.'
+  scenarios:
+  - name: Create and check a checklist note
+    steps:
+    - keyword: GIVEN
+      content: The user is on the Keep home page.
+    - keyword: WHEN
+      content: The user creates a checklist note titled Packing checklist with items Passport and Charger and saves it.
+    - keyword: THEN
+      content: The saved Packing checklist note displays both items with checkboxes.
+    - keyword: WHEN
+      content: The user checks the Passport item.
+    - keyword: THEN
+      content: Passport remains visible and is marked checked.
+- id: REQ-8.2
+  name: Timed note reminders
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-2.2
+  - REQ-2.7.6.3
+  description: 'Add timed reminders for notes. References: ![image](./reference/remind.png) and ![image](./reference/reminders.png). Seed data: regular note `Call dentist` with content `Schedule a cleaning appointment.`. A user can set the reminder value `Tomorrow`; the note card must show a visible `Tomorrow` reminder chip and the note must appear in the `Reminders` sidebar view while preserving its title and content.'
+  scenarios:
+  - name: Set a Tomorrow reminder on a note
+    steps:
+    - keyword: GIVEN
+      content: The user is on the home page and can see the Call dentist note.
+    - keyword: WHEN
+      content: The user opens the reminder control for Call dentist and selects Tomorrow.
+    - keyword: THEN
+      content: Call dentist displays a Tomorrow reminder chip and appears in the Reminders view.
+- id: REQ-9.1
+  name: Share notes with collaborators
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-2.2
+  description: 'Add collaborator sharing for notes. References: ![image](./reference/collaborate.png) and ![image](./reference/save.png). Seed data: note `Groceries`; collaborator email `teammate@example.com`. A user can open the note action menu, choose `Collaborator` or `Share`, enter the email, save, and reopen the dialog to see the collaborator attached to the note.'
+  scenarios:
+  - name: Add a collaborator to a note
+    steps:
+    - keyword: GIVEN
+      content: The user is on the Keep home page and can see the Groceries note.
+    - keyword: WHEN
+      content: The user opens actions for Groceries, chooses Collaborator, enters teammate@example.com, and saves.
+    - keyword: THEN
+      content: Groceries shows collaborator information and teammate@example.com is visible when the dialog is reopened.
+- id: REQ-9.2
+  name: Create image notes
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-2.2
+  description: 'Add image attachment support for notes. Reference image: ![image](./reference/image.png). The `Note editor` must provide an image action and file input. A user can create note `Receipt photo` with content `Image attached for reimbursement.`, attach an image, and close the editor. The saved note card displays its title, text content, and an image preview.'
+  scenarios:
+  - name: Attach an image to a note
+    steps:
+    - keyword: GIVEN
+      content: The user is on the Keep home page and can open the Note editor.
+    - keyword: WHEN
+      content: The user creates Receipt photo, enters Image attached for reimbursement., chooses the image action, uploads a PNG image, and closes the editor.
+    - keyword: THEN
+      content: The saved Receipt photo note displays its title, text content, and an image preview.

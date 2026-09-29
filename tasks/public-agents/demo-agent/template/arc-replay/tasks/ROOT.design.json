@@ -1,0 +1,56 @@
+{
+  "task": {
+    "node_id": "ROOT",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-ROOT-APP-ROUTE",
+      "req_ids": ["ROOT"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-ROOT-APP-ROUTE",
+        "type": "UI",
+        "name": "Root App Route Shell",
+        "description": "Defines the top-level application router and shared auth-provider shell for all pages.",
+        "callers": [],
+        "callees": []
+      },
+      "file_path": "frontend/src/App.tsx",
+      "first_line": "function App() {",
+      "implemented": false,
+      "callers": [],
+      "callees": []
+    }
+  ],
+  "notes": "Initialize the template repository, shared runtime shell, shared schema, shared visual assets, and the replay queue.",
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-ROOT-APP-ROUTE",
+        "req_ids": ["ROOT"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-ROOT-APP-ROUTE\",\"type\":\"UI\",\"name\":\"Root App Route Shell\",\"description\":\"Defines the top-level application router and shared auth-provider shell for all pages.\",\"callers\":[],\"callees\":[]}",
+        "file_path": "frontend/src/App.tsx",
+        "first_line": "function App() {",
+        "implemented": false,
+        "callers": [],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "ROOT",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "ROOT (design): initialize shared shell, schema, and replay queue."
+      }
+    }
+  ]
+}

@@ -10,3 +10,6 @@ local-runs/
 .venv/
 *.egg-info/
 /agent/arcbench-agent-runtime/build/
+reference/
+tasks/benchmark-bundle/
+tasks/catalog-benchmark/

@@ -1,0 +1,11 @@
+{
+  "id": "arc-bench-lite-evolution--bookstack",
+  "display_id": "TASK-003",
+  "competition": "arc-bench-lite-evolution",
+  "title": "BookStack Evolution",
+  "test_runner": "playwright",
+  "total_tests": 6,
+  "test_files": 7,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:43:25+0800"
+}

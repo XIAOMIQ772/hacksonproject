@@ -1,0 +1,11 @@
+{
+  "id": "arc-bench-web--stackoverflow",
+  "display_id": "TASK-010",
+  "competition": "arc-bench-web",
+  "title": "Stack Overflow Platform",
+  "test_runner": "playwright",
+  "total_tests": 67,
+  "test_files": 67,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:46:50+0800"
+}

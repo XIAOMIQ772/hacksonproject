@@ -1,0 +1,59 @@
+{
+  "task": {
+    "node_id": "REQ-2.3",
+    "phase": "implement"
+  },
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "UI-REQ-2.3-RESULT-BOOKING-ENTRY",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "API-BE-SEARCH-TRAIN-DETAIL",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2.3",
+        "state": "IMPLEMENTED"
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-2.3::Integration::001::REQ-2.3-INTEGRATION-TRAIN-DETAIL-API": true,
+          "REQ-2.3::Integration::002::REQ-2.3-INTEGRATION-BOOKING-ENTRY-UI": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-2.3::E2E::003::REQ-2.3-E2E-BOOKING-ENTRY": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2.3",
+        "state": "PASSED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-2.3 (implement): implement selected-train booking entry and booking context loading."
+      }
+    }
+  ]
+}

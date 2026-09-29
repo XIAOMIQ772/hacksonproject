@@ -1,0 +1,9 @@
+{
+    "files": [
+        {
+            "path": "REQ-1.spec.ts",
+            "content": "import { test, expect } from '@playwright/test';\n\ntest('REQ-1: increment and decrement the counter', async ({ page }) => {\n  await page.goto('/');\n\n  const count = page.getByTestId('count');\n  const increment = page.getByRole('button', { name: 'Increment' });\n  const decrement = page.getByRole('button', { name: 'Decrement' });\n\n  await expect(count).toHaveText('0');\n  await expect(increment).toBeVisible();\n  await expect(decrement).toBeVisible();\n\n  await increment.click();\n  await increment.click();\n  await expect(count).toHaveText('2');\n\n  await decrement.click();\n  await decrement.click();\n  await decrement.click();\n  await expect(count).toHaveText('-1');\n});\n"
+        }
+    ],
+    "public_downloads": null
+}

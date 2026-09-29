@@ -1,0 +1,11 @@
+{
+  "id": "ticket-booking--ticket-booking",
+  "display_id": "TASK-019",
+  "competition": "ticket-booking",
+  "title": "火车票预订演示系统",
+  "test_runner": "playwright",
+  "total_tests": 10,
+  "test_files": 3,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:47:13+0800"
+}

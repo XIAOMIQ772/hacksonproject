@@ -1,0 +1,15 @@
+{
+    "id": "smoke--dice",
+    "display_id": "TASK-016",
+    "title": "ARC Dice Smoke Test",
+    "category": "web",
+    "summary": "Use ARC to build an extremely small dice application for verifying the metered competition submission and leaderboard pipeline.",
+    "test_runner": "playwright",
+    "total_tests": 1,
+    "module_count": 1,
+    "requirements_markdown": "# ARC Dice Smoke Test\n\nUse ARC to build an extremely small dice application for verifying the metered competition submission and leaderboard pipeline.\n\n## REQ-1 Roll a six-sided die\n\nThe home page displays a button named \"Roll\" and a dice value with the test id \"dice-value\". Clicking Roll chooses an integer from 1 through 6 and displays it. No styling or layout is required.\n\n**Type:** ATOMIC\n**Dependencies:** None\n\n**Scenarios:**\n\n- Roll and display a dice value\n  - **GIVEN:** The visitor opens the home page.\n  - **THEN:** A button named \"Roll\" is visible.\n  - **WHEN:** The visitor clicks Roll.\n  - **THEN:** The dice value displays an integer from 1 through 6.\n",
+    "requirements_yaml": "id: ROOT\nname: ARC Dice Smoke Test\ntype: FOLDER\ndependencies: []\ndescription: >-\n  Use ARC to build an extremely small dice application for verifying the\n  metered competition submission and leaderboard pipeline.\nchildren:\n  - id: REQ-1\n    name: Roll a six-sided die\n    type: ATOMIC\n    dependencies: []\n    description: >-\n      The home page displays a button named \"Roll\" and a dice value with the\n      test id \"dice-value\". Clicking Roll chooses an integer from 1 through 6\n      and displays it. No styling or layout is required.\n    scenarios:\n      - name: Roll and display a dice value\n        steps:\n          - keyword: GIVEN\n            content: The visitor opens the home page.\n          - keyword: THEN\n            content: A button named \"Roll\" is visible.\n          - keyword: WHEN\n            content: The visitor clicks Roll.\n          - keyword: THEN\n            content: The dice value displays an integer from 1 through 6.\n",
+    "prerequisites_markdown": "",
+    "assets_base_url": "http://arc-bench.com/api/requirements/smoke--dice/assets?catalog=competition",
+    "references_base_url": "http://arc-bench.com/api/requirements/smoke--dice/references?catalog=competition"
+}

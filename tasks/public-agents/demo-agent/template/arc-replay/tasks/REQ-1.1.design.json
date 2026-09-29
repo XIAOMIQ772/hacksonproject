@@ -1,0 +1,233 @@
+{
+  "task": {
+    "node_id": "REQ-1.1",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-1.1-REGISTER-PAGE",
+      "req_ids": ["REQ-1.1"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-1.1-REGISTER-PAGE",
+        "type": "UI",
+        "name": "Register Page",
+        "description": "Collects username, email, password, and confirmPassword on the public registration page.",
+        "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+        "callees": ["API-FE-AUTH-REGISTER"]
+      },
+      "file_path": "frontend/src/pages/RegisterPage.tsx",
+      "first_line": "export default function RegisterPage() {",
+      "implemented": false,
+      "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+      "callees": ["API-FE-AUTH-REGISTER"]
+    },
+    {
+      "interface_id": "API-BE-AUTH-REGISTER",
+      "req_ids": ["REQ-1.1"],
+      "type": "API",
+      "content": {
+        "interface_id": "API-BE-AUTH-REGISTER",
+        "type": "API",
+        "name": "Register Route",
+        "description": "Accepts POST /api/auth/register for new account creation.",
+        "callers": ["API-FE-AUTH-REGISTER"],
+        "callees": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"]
+      },
+      "file_path": "backend/src/routes/auth.js",
+      "first_line": "router.post('/register', async (req, res, next) => {",
+      "implemented": false,
+      "callers": ["API-FE-AUTH-REGISTER"],
+      "callees": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"]
+    },
+    {
+      "interface_id": "FUNC-BE-AUTH-REGISTER-ACCOUNT",
+      "req_ids": ["REQ-1.1"],
+      "type": "FUNC",
+      "content": {
+        "interface_id": "FUNC-BE-AUTH-REGISTER-ACCOUNT",
+        "type": "FUNC",
+        "name": "Register Account Service",
+        "description": "Validates and creates a user plus session token for the registration flow.",
+        "callers": ["API-BE-AUTH-REGISTER"],
+        "callees": ["DB-BE-AUTH-USERS-INSERT"]
+      },
+      "file_path": "backend/src/services/auth_service.js",
+      "first_line": "async function registerAccount(body = {}) {",
+      "implemented": false,
+      "callers": ["API-BE-AUTH-REGISTER"],
+      "callees": ["DB-BE-AUTH-USERS-INSERT"]
+    },
+    {
+      "interface_id": "DB-BE-AUTH-USERS-INSERT",
+      "req_ids": ["REQ-1.1"],
+      "type": "DB",
+      "content": {
+        "interface_id": "DB-BE-AUTH-USERS-INSERT",
+        "type": "DB",
+        "name": "User Insert Repository",
+        "description": "Reads existing users by username/email and inserts a new user row plus a session row.",
+        "callers": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"],
+        "callees": []
+      },
+      "file_path": "backend/src/repositories/auth_repository.js",
+      "first_line": "async function findUserByUsername(username) {",
+      "implemented": false,
+      "callers": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"],
+      "callees": []
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-1.1-UNIT-REGISTER-PAYLOAD",
+      "req_id": "REQ-1.1",
+      "interface_ids": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"],
+      "type": "Unit",
+      "file_path": "backend/tests/req-1.1-register.unit.test.js",
+      "first_line": "const { describe, expect, it } = require('vitest');"
+    },
+    {
+      "test_id": "REQ-1.1-INTEGRATION-REGISTER-API",
+      "req_id": "REQ-1.1",
+      "interface_ids": ["API-BE-AUTH-REGISTER", "FUNC-BE-AUTH-REGISTER-ACCOUNT", "DB-BE-AUTH-USERS-INSERT"],
+      "type": "Integration",
+      "file_path": "backend/tests/req-1.1-register.integration.test.js",
+      "first_line": "const request = require('supertest');"
+    },
+    {
+      "test_id": "REQ-1.1-INTEGRATION-REGISTER-PAGE",
+      "req_id": "REQ-1.1",
+      "interface_ids": ["UI-REQ-1.1-REGISTER-PAGE", "API-FE-AUTH-REGISTER"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-1.1-register.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    },
+    {
+      "test_id": "REQ-1.1-E2E-REGISTER-ENTRY",
+      "req_id": "REQ-1.1",
+      "interface_ids": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL", "UI-REQ-1.1-REGISTER-PAGE", "API-BE-AUTH-REGISTER"],
+      "type": "E2E",
+      "file_path": "backend/test-e2e/req-1.1-register.e2e.spec.js",
+      "first_line": "const { expect, test } = require('@playwright/test');"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-1.1-REGISTER-PAGE",
+        "req_ids": ["REQ-1.1"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-1.1-REGISTER-PAGE\",\"type\":\"UI\",\"name\":\"Register Page\",\"description\":\"Collects username, email, password, and confirmPassword on the public registration page.\",\"callers\":[\"UI-REQ-1-HOMEPAGE-PUBLIC-SHELL\"],\"callees\":[\"API-FE-AUTH-REGISTER\"]}",
+        "file_path": "frontend/src/pages/RegisterPage.tsx",
+        "first_line": "export default function RegisterPage() {",
+        "implemented": false,
+        "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+        "callees": ["API-FE-AUTH-REGISTER"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "API-BE-AUTH-REGISTER",
+        "req_ids": ["REQ-1.1"],
+        "type": "API",
+        "content": "{\"interface_id\":\"API-BE-AUTH-REGISTER\",\"type\":\"API\",\"name\":\"Register Route\",\"description\":\"Accepts POST /api/auth/register for new account creation.\",\"callers\":[\"API-FE-AUTH-REGISTER\"],\"callees\":[\"FUNC-BE-AUTH-REGISTER-ACCOUNT\"]}",
+        "file_path": "backend/src/routes/auth.js",
+        "first_line": "router.post('/register', async (req, res, next) => {",
+        "implemented": false,
+        "callers": ["API-FE-AUTH-REGISTER"],
+        "callees": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "FUNC-BE-AUTH-REGISTER-ACCOUNT",
+        "req_ids": ["REQ-1.1"],
+        "type": "FUNC",
+        "content": "{\"interface_id\":\"FUNC-BE-AUTH-REGISTER-ACCOUNT\",\"type\":\"FUNC\",\"name\":\"Register Account Service\",\"description\":\"Validates and creates a user plus session token for the registration flow.\",\"callers\":[\"API-BE-AUTH-REGISTER\"],\"callees\":[\"DB-BE-AUTH-USERS-INSERT\"]}",
+        "file_path": "backend/src/services/auth_service.js",
+        "first_line": "async function registerAccount(body = {}) {",
+        "implemented": false,
+        "callers": ["API-BE-AUTH-REGISTER"],
+        "callees": ["DB-BE-AUTH-USERS-INSERT"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "DB-BE-AUTH-USERS-INSERT",
+        "req_ids": ["REQ-1.1"],
+        "type": "DB",
+        "content": "{\"interface_id\":\"DB-BE-AUTH-USERS-INSERT\",\"type\":\"DB\",\"name\":\"User Insert Repository\",\"description\":\"Reads existing users by username/email and inserts a new user row plus a session row.\",\"callers\":[\"FUNC-BE-AUTH-REGISTER-ACCOUNT\"],\"callees\":[]}",
+        "file_path": "backend/src/repositories/auth_repository.js",
+        "first_line": "async function findUserByUsername(username) {",
+        "implemented": false,
+        "callers": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.1::Unit::001::REQ-1.1-UNIT-REGISTER-PAYLOAD",
+        "req_id": "REQ-1.1",
+        "interface_ids": ["FUNC-BE-AUTH-REGISTER-ACCOUNT"],
+        "type": "Unit",
+        "file_path": "backend/tests/req-1.1-register.unit.test.js",
+        "first_line": "const { describe, expect, it } = require('vitest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.1::Integration::002::REQ-1.1-INTEGRATION-REGISTER-API",
+        "req_id": "REQ-1.1",
+        "interface_ids": ["API-BE-AUTH-REGISTER", "FUNC-BE-AUTH-REGISTER-ACCOUNT", "DB-BE-AUTH-USERS-INSERT"],
+        "type": "Integration",
+        "file_path": "backend/tests/req-1.1-register.integration.test.js",
+        "first_line": "const request = require('supertest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.1::Integration::003::REQ-1.1-INTEGRATION-REGISTER-PAGE",
+        "req_id": "REQ-1.1",
+        "interface_ids": ["UI-REQ-1.1-REGISTER-PAGE", "API-FE-AUTH-REGISTER"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-1.1-register.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.1::E2E::004::REQ-1.1-E2E-REGISTER-ENTRY",
+        "req_id": "REQ-1.1",
+        "interface_ids": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL", "UI-REQ-1.1-REGISTER-PAGE", "API-BE-AUTH-REGISTER"],
+        "type": "E2E",
+        "file_path": "backend/test-e2e/req-1.1-register.e2e.spec.js",
+        "first_line": "const { expect, test } = require('@playwright/test');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1.1",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-1.1 (design): scaffold registration UI, route, service, repository, and tests."
+      }
+    }
+  ]
+}

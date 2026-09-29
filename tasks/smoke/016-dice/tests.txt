@@ -1,0 +1,9 @@
+{
+    "files": [
+        {
+            "path": "REQ-1.spec.ts",
+            "content": "import { test, expect } from '@playwright/test';\n\ntest('REQ-1: roll and display a six-sided dice value', async ({ page }) => {\n  await page.goto('/');\n\n  const roll = page.getByRole('button', { name: 'Roll' });\n  const diceValue = page.getByTestId('dice-value');\n\n  await expect(roll).toBeVisible();\n  await roll.click();\n  await expect(diceValue).toHaveText(/^[1-6]$/);\n});\n"
+        }
+    ],
+    "public_downloads": null
+}

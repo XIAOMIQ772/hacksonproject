@@ -1,0 +1,61 @@
+{
+  "competition": {
+    "id": "arc-bench-lite",
+    "title": "ARC-Bench-Lite",
+    "type": "demo",
+    "summary": "A Lite version of ARC-Bench, which is a benchmark for evaluating the performance of AI agents across various tasks. This competition focuses on a subset of tasks from the full ARC-Bench suite, providing a more accessible entry point for participants.",
+    "task_count": 2,
+    "total_tests": 66,
+    "is_public": true,
+    "starts_at": "2026-09-10",
+    "ends_at": "2036-09-10",
+    "status": "open",
+    "notice": "Task packs are ready. Create a submission from this competition page.",
+    "template_required": false,
+    "template_source_competition_id": null,
+    "initial_budget_cny": null,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "arc-bench-lite--bookstack",
+        "display_id": "TASK-001",
+        "title": "BookStack Knowledge Base System",
+        "category": "web",
+        "summary": "Web-based knowledge base system for browsing, organizing, and reading shelves, books, chapters, and pages.",
+        "test_runner": "playwright",
+        "total_tests": 34,
+        "module_count": 34,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite--bookstack/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite--bookstack/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-lite--keep",
+        "display_id": "TASK-002",
+        "title": "Keep",
+        "category": "web",
+        "summary": "Note management system for creating, organizing, searching, and configuring personal notes.",
+        "test_runner": "playwright",
+        "total_tests": 32,
+        "module_count": 32,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite--keep/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite--keep/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:42:39+0800",
+  "dirs": {
+    "arc-bench-lite--bookstack": "001-bookstack",
+    "arc-bench-lite--keep": "002-keep"
+  }
+}

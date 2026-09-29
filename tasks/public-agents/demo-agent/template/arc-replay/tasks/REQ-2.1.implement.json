@@ -1,0 +1,81 @@
+{
+  "task": {
+    "node_id": "REQ-2.1",
+    "phase": "implement"
+  },
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "UI-REQ-2.1-HOMEPAGE-SEARCH-SUBMIT",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "API-BE-SEARCH-TICKETS",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "FUNC-BE-SEARCH-TICKET-QUERY",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "DB-BE-TRAINS-BY-ROUTE",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2.1",
+        "state": "IMPLEMENTED"
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-2.1::Unit::001::REQ-2.1-SEARCH-UNIT": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-2.1::Integration::002::REQ-2.1-SEARCH-API": true,
+          "REQ-2.1::Integration::003::REQ-2.1-SEARCH-RESULTS-PAGE": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-2.1::E2E::004::REQ-2.1-HOMEPAGE-SEARCH": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2.1",
+        "state": "PASSED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-2.1 (implement): implement homepage search submission and runtime result rendering."
+      }
+    }
+  ]
+}

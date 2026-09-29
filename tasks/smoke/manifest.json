@@ -1,0 +1,61 @@
+{
+  "competition": {
+    "id": "smoke",
+    "title": "Smoke Competition",
+    "type": "demo",
+    "summary": "Build minimal counter and dice applications to validate the competition submission, run, and leaderboard pipeline.",
+    "task_count": 2,
+    "total_tests": 2,
+    "is_public": true,
+    "starts_at": "2026-09-01",
+    "ends_at": "2026-10-17",
+    "status": "open",
+    "notice": "Two compact task packs are available for fast end-to-end pipeline checks.",
+    "template_required": false,
+    "template_source_competition_id": null,
+    "initial_budget_cny": null,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "smoke--counter",
+        "display_id": "TASK-015",
+        "title": "ARC Counter Smoke Test",
+        "category": "web",
+        "summary": "Use ARC to build an extremely small counter application for verifying the metered competition submission and leaderboard pipeline.",
+        "test_runner": "playwright",
+        "total_tests": 1,
+        "module_count": 1,
+        "assets_base_url": "http://arc-bench.com/api/requirements/smoke--counter/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/smoke--counter/references?catalog=competition"
+      },
+      {
+        "id": "smoke--dice",
+        "display_id": "TASK-016",
+        "title": "ARC Dice Smoke Test",
+        "category": "web",
+        "summary": "Use ARC to build an extremely small dice application for verifying the metered competition submission and leaderboard pipeline.",
+        "test_runner": "playwright",
+        "total_tests": 1,
+        "module_count": 1,
+        "assets_base_url": "http://arc-bench.com/api/requirements/smoke--dice/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/smoke--dice/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:47:07+0800",
+  "dirs": {
+    "smoke--counter": "015-counter",
+    "smoke--dice": "016-dice"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "task": {
+    "node_id": "REQ-2",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-2-SEARCH-PANEL",
+      "req_ids": ["REQ-2"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-2-SEARCH-PANEL",
+        "type": "UI",
+        "name": "Search Panel",
+        "description": "Collects departure city, destination city, and departure date in the shared search shell.",
+        "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+        "callees": []
+      },
+      "file_path": "frontend/src/components/SearchPanel.tsx",
+      "first_line": "export default function SearchPanel({",
+      "implemented": false,
+      "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+      "callees": []
+    },
+    {
+      "interface_id": "UI-REQ-2-RESULT-PAGE-SHELL",
+      "req_ids": ["REQ-2"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-2-RESULT-PAGE-SHELL",
+        "type": "UI",
+        "name": "Search Result Page Shell",
+        "description": "Provides the parent shell that hosts the search panel and result region.",
+        "callers": ["UI-ROOT-APP-ROUTE"],
+        "callees": ["UI-REQ-2-SEARCH-PANEL"]
+      },
+      "file_path": "frontend/src/pages/SearchResultsPage.tsx",
+      "first_line": "export default function SearchResultsPage() {",
+      "implemented": false,
+      "callers": ["UI-ROOT-APP-ROUTE"],
+      "callees": ["UI-REQ-2-SEARCH-PANEL"]
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-2-INTEGRATION-SEARCH-SHELL",
+      "req_id": "REQ-2",
+      "interface_ids": ["UI-REQ-2-SEARCH-PANEL", "UI-REQ-2-RESULT-PAGE-SHELL"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-2-search-shell.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-2-SEARCH-PANEL",
+        "req_ids": ["REQ-2"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-2-SEARCH-PANEL\",\"type\":\"UI\",\"name\":\"Search Panel\",\"description\":\"Collects departure city, destination city, and departure date in the shared search shell.\",\"callers\":[\"UI-REQ-2-RESULT-PAGE-SHELL\"],\"callees\":[]}",
+        "file_path": "frontend/src/components/SearchPanel.tsx",
+        "first_line": "export default function SearchPanel({",
+        "implemented": false,
+        "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-2-RESULT-PAGE-SHELL",
+        "req_ids": ["REQ-2"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-2-RESULT-PAGE-SHELL\",\"type\":\"UI\",\"name\":\"Search Result Page Shell\",\"description\":\"Provides the parent shell that hosts the search panel and result region.\",\"callers\":[\"UI-ROOT-APP-ROUTE\"],\"callees\":[\"UI-REQ-2-SEARCH-PANEL\"]}",
+        "file_path": "frontend/src/pages/SearchResultsPage.tsx",
+        "first_line": "export default function SearchResultsPage() {",
+        "implemented": false,
+        "callers": ["UI-ROOT-APP-ROUTE"],
+        "callees": ["UI-REQ-2-SEARCH-PANEL"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2::Integration::001::REQ-2-INTEGRATION-SEARCH-SHELL",
+        "req_id": "REQ-2",
+        "interface_ids": ["UI-REQ-2-SEARCH-PANEL", "UI-REQ-2-RESULT-PAGE-SHELL"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-2-search-shell.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-2 (design): add search panel and result page shell."
+      }
+    }
+  ]
+}

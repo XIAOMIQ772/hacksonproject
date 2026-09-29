@@ -1,0 +1,61 @@
+{
+  "competition": {
+    "id": "arc-bench-lite-evolution",
+    "title": "ARC-Bench-Lite Evolution",
+    "type": "demo",
+    "summary": "Run evolution tasks for ARC-Bench-Lite. Each task starts from a completed ARC-Bench-Lite baseline implementation and applies a small set of realistic changed or new requirements.",
+    "task_count": 2,
+    "total_tests": 12,
+    "is_public": true,
+    "starts_at": "2026-09-20",
+    "ends_at": "2036-09-01",
+    "status": "open",
+    "notice": "Task packs are ready. Create a submission from this competition page.",
+    "template_required": true,
+    "template_source_competition_id": "arc-bench-lite",
+    "initial_budget_cny": null,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "arc-bench-lite-evolution--bookstack",
+        "display_id": "TASK-003",
+        "title": "BookStack Evolution",
+        "category": "web",
+        "summary": "ARC-Bench-Lite evolution requirements for the BookStack knowledge base system. The task starts from a completed BookStack implementation from ARC-Bench-Lite and applies realistic BookStack behaviors that extend authentication feedback, book organization, page collaboration, export, scoped search, and revision history while preserving existing browsing and reading behavior.",
+        "test_runner": "playwright",
+        "total_tests": 6,
+        "module_count": 6,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite-evolution--bookstack/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite-evolution--bookstack/references?catalog=competition"
+      },
+      {
+        "id": "arc-bench-lite-evolution--keep",
+        "display_id": "TASK-004",
+        "title": "Keep Evolution",
+        "category": "web",
+        "summary": "ARC-Bench-Lite evolution requirements for the Keep note management system. The task starts from a completed Keep implementation from ARC-Bench-Lite and applies changed and new requirements based on real Google Keep behavior while preserving existing note creation, search, labels, archive, and settings behavior.",
+        "test_runner": "playwright",
+        "total_tests": 6,
+        "module_count": 6,
+        "assets_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite-evolution--keep/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/arc-bench-lite-evolution--keep/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:43:22+0800",
+  "dirs": {
+    "arc-bench-lite-evolution--bookstack": "003-bookstack",
+    "arc-bench-lite-evolution--keep": "004-keep"
+  }
+}

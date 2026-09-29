@@ -1,0 +1,115 @@
+{
+  "task": {
+    "node_id": "REQ-1",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-1-HOMEPAGE-PUBLIC-SHELL",
+      "req_ids": ["REQ-1"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-1-HOMEPAGE-PUBLIC-SHELL",
+        "type": "UI",
+        "name": "Public Homepage Shell",
+        "description": "Renders the public homepage hero, shared header, and authentication entry cards.",
+        "callers": ["UI-ROOT-APP-ROUTE"],
+        "callees": ["UI-REQ-1-AUTH-ENTRY-SECTION"]
+      },
+      "file_path": "frontend/src/pages/HomePage.tsx",
+      "first_line": "function HomePage() {",
+      "implemented": false,
+      "callers": ["UI-ROOT-APP-ROUTE"],
+      "callees": ["UI-REQ-1-AUTH-ENTRY-SECTION"]
+    },
+    {
+      "interface_id": "UI-REQ-1-AUTH-ENTRY-SECTION",
+      "req_ids": ["REQ-1"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-1-AUTH-ENTRY-SECTION",
+        "type": "UI",
+        "name": "Authentication Entry Section",
+        "description": "Shows public registration and login entry cards from the homepage shell.",
+        "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+        "callees": []
+      },
+      "file_path": "frontend/src/components/AuthEntrySection.tsx",
+      "first_line": "export default function AuthEntrySection() {",
+      "implemented": false,
+      "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+      "callees": []
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-1-INTEGRATION-PUBLIC-HOMEPAGE",
+      "req_id": "REQ-1",
+      "interface_ids": [
+        "UI-REQ-1-HOMEPAGE-PUBLIC-SHELL",
+        "UI-REQ-1-AUTH-ENTRY-SECTION"
+      ],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-1-public-homepage.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-1-HOMEPAGE-PUBLIC-SHELL",
+        "req_ids": ["REQ-1"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-1-HOMEPAGE-PUBLIC-SHELL\",\"type\":\"UI\",\"name\":\"Public Homepage Shell\",\"description\":\"Renders the public homepage hero, shared header, and authentication entry cards.\",\"callers\":[\"UI-ROOT-APP-ROUTE\"],\"callees\":[\"UI-REQ-1-AUTH-ENTRY-SECTION\"]}",
+        "file_path": "frontend/src/pages/HomePage.tsx",
+        "first_line": "function HomePage() {",
+        "implemented": false,
+        "callers": ["UI-ROOT-APP-ROUTE"],
+        "callees": ["UI-REQ-1-AUTH-ENTRY-SECTION"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-1-AUTH-ENTRY-SECTION",
+        "req_ids": ["REQ-1"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-1-AUTH-ENTRY-SECTION\",\"type\":\"UI\",\"name\":\"Authentication Entry Section\",\"description\":\"Shows public registration and login entry cards from the homepage shell.\",\"callers\":[\"UI-REQ-1-HOMEPAGE-PUBLIC-SHELL\"],\"callees\":[]}",
+        "file_path": "frontend/src/components/AuthEntrySection.tsx",
+        "first_line": "export default function AuthEntrySection() {",
+        "implemented": false,
+        "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1::Integration::001::REQ-1-INTEGRATION-PUBLIC-HOMEPAGE",
+        "req_id": "REQ-1",
+        "interface_ids": [
+          "UI-REQ-1-HOMEPAGE-PUBLIC-SHELL",
+          "UI-REQ-1-AUTH-ENTRY-SECTION"
+        ],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-1-public-homepage.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-1 (design): add public homepage authentication entry shell."
+      }
+    }
+  ]
+}

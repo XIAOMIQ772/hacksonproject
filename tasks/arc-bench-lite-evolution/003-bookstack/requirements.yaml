@@ -1,0 +1,106 @@
+id: ROOT
+name: BookStack Evolution
+type: FOLDER
+description: ARC-Bench-Lite evolution requirements for the BookStack knowledge base system. The task starts from a completed BookStack implementation from ARC-Bench-Lite and applies realistic BookStack behaviors that extend authentication feedback, book organization, page collaboration, export, scoped search, and revision history while preserving existing browsing and reading behavior.
+dependencies: []
+children:
+- id: REQ-10.1
+  name: Login failure feedback
+  type: ATOMIC
+  change_type: CHANGE
+  original_requirement_id: REQ-2.2
+  dependencies:
+  - REQ-2.1
+  description: 'Extend the login flow so invalid credentials are handled explicitly. The login form contains the labelled fields `Email address` and `Password`, a `Remember Me` checkbox, and a `Login` button. Reference image: ![image](./reference/error.png). Seed data: verified account nickname `BookStack User`, email `bookstack_user@example.com`, password `Password123!`; invalid-login test data uses `unknown.bookstack@example.com` and `WrongPassword123!`. If the user submits an unknown email or wrong password, the system must stay on the login page, keep the `Login form` visible, and expose an authentication error with accessible text `Invalid email or password`. The existing successful login behavior with valid credentials must remain unchanged.'
+  scenarios:
+  - name: Reject invalid credentials
+    steps:
+    - keyword: GIVEN
+      content: The user is on the login form page.
+    - keyword: WHEN
+      content: The user enters unknown.bookstack@example.com and WrongPassword123! in the Email address and Password fields and clicks Login.
+    - keyword: THEN
+      content: The Login form remains visible and an alert or status with text Invalid email or password is displayed.
+- id: REQ-10.2
+  name: Sort book contents
+  type: ATOMIC
+  change_type: CHANGE
+  original_requirement_id: REQ-5.2
+  dependencies:
+  - REQ-5.2.1
+  - REQ-6.1.1
+  - REQ-6.2.1
+  description: 'Extend the book details page so the user can sort the contents of a book. Reference image: ![image](./reference/sort.png). Seed data: book `Evolution Sort Book`, chapter `Beta Chapter`, and page `Alpha Page`; both child entries belong to that book. The action panel must expose a `Sort` or `Reorder` action, allow alphabetical ordering by name, and provide a `Save` or `Apply` action. After saving, the user remains on the same book details page, the book heading remains visible, and the existing page and chapter entries are preserved in the selected order.'
+  scenarios:
+  - name: Sort pages and chapters inside a book
+    steps:
+    - keyword: GIVEN
+      content: The user is viewing Evolution Sort Book, which contains Beta Chapter and Alpha Page.
+    - keyword: WHEN
+      content: The user opens Sort or Reorder, selects alphabetical ordering by name, and activates Save or Apply.
+    - keyword: THEN
+      content: The Evolution Sort Book details page remains visible and shows both Alpha Page and Beta Chapter after sorting.
+- id: REQ-11.1
+  name: Page comments
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-6.3.1
+  description: 'Add comments to readable pages. Reference image: ![image](./reference/page.png). Seed data: book `Evolution Comments Book` with readable page `Review Guidelines`. The page must expose a labelled `Comment` textbox and a `Submit comment` or `Add comment` action. A user can submit the exact comment `This page needs review.` and see it in the comment section on the same page. Submitting a comment must not remove the page title or content.'
+  scenarios:
+  - name: Add a comment to a page
+    steps:
+    - keyword: GIVEN
+      content: The user is reading the Review Guidelines page in Evolution Comments Book.
+    - keyword: WHEN
+      content: The user enters This page needs review. in Comment and submits it.
+    - keyword: THEN
+      content: This page needs review. appears in the page comments section and Review Guidelines remains readable.
+- id: REQ-11.2
+  name: Export book as Markdown
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-5.2.1
+  description: 'Add a Markdown export option to the book details page. Reference image: ![image](./reference/export.png). Seed data: book `Evolution Export Book`. The action must be named `Export Markdown` or `Download Markdown`, download a file whose suggested filename ends in `.md`, and keep the user on the same book details page.'
+  scenarios:
+  - name: Download book Markdown
+    steps:
+    - keyword: GIVEN
+      content: The user is viewing the Evolution Export Book details page.
+    - keyword: WHEN
+      content: The user clicks the Markdown export action.
+    - keyword: THEN
+      content: The browser receives a Markdown file download for Evolution Export Book and the details page remains available.
+- id: REQ-12.1
+  name: Search within a book
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-5.2.1
+  description: 'Add scoped search inside the current book. Reference image: ![image](./reference/search_withinbook.png). Seed data: `Evolution Search Book` contains page `Deployment Guide`, while `Deployment Archive` belongs to another book. The book sidebar must expose a labelled `Search` field. Searching for `Deployment` from `Evolution Search Book` must show `Deployment Guide` and keep the user in the current book context, while not showing `Deployment Archive` from the other book.'
+  scenarios:
+  - name: Search child pages inside a book
+    steps:
+    - keyword: GIVEN
+      content: The user is viewing Evolution Search Book, which contains Deployment Guide.
+    - keyword: WHEN
+      content: The user enters Deployment in the book-level Search field and presses Enter.
+    - keyword: THEN
+      content: The system shows Deployment Guide, does not show Deployment Archive, and keeps the user in the Evolution Search Book context.
+- id: REQ-12.2
+  name: View page revision history
+  type: ATOMIC
+  change_type: ADD
+  dependencies:
+  - REQ-6.3.1
+  description: 'Add revision history access for readable pages. Reference image: ![image](./reference/revision_history.png). Seed data: book `Evolution Revisions Book` with page `Release Process` and at least two saved versions, including a visible entry labelled `Revision 2` with timestamp or author metadata. A user can open page actions, choose `Revisions` or `Revision history`, view the versions, and return to the page while preserving its title and content.'
+  scenarios:
+  - name: Open revisions for a page
+    steps:
+    - keyword: GIVEN
+      content: The user is reading Release Process in Evolution Revisions Book.
+    - keyword: WHEN
+      content: The user opens the page actions and chooses Revisions.
+    - keyword: THEN
+      content: The system displays revision history including Revision 2 and keeps a Back, Return, or View page action.

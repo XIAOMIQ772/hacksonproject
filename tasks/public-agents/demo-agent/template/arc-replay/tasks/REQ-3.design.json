@@ -1,0 +1,77 @@
+{
+  "task": {
+    "node_id": "REQ-3",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-3-BOOKING-PAGE-SHELL",
+      "req_ids": ["REQ-3"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-3-BOOKING-PAGE-SHELL",
+        "type": "UI",
+        "name": "Booking Page Shell",
+        "description": "Defines the protected booking page shell with selected-train and passenger-information sections.",
+        "callers": ["UI-ROOT-APP-ROUTE"],
+        "callees": []
+      },
+      "file_path": "frontend/src/pages/BookingPage.tsx",
+      "first_line": "export default function BookingPage() {",
+      "implemented": false,
+      "callers": ["UI-ROOT-APP-ROUTE"],
+      "callees": []
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-3-INTEGRATION-BOOKING-SHELL",
+      "req_id": "REQ-3",
+      "interface_ids": ["UI-REQ-3-BOOKING-PAGE-SHELL"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-3-booking-shell.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-3-BOOKING-PAGE-SHELL",
+        "req_ids": ["REQ-3"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-3-BOOKING-PAGE-SHELL\",\"type\":\"UI\",\"name\":\"Booking Page Shell\",\"description\":\"Defines the protected booking page shell with selected-train and passenger-information sections.\",\"callers\":[\"UI-ROOT-APP-ROUTE\"],\"callees\":[]}",
+        "file_path": "frontend/src/pages/BookingPage.tsx",
+        "first_line": "export default function BookingPage() {",
+        "implemented": false,
+        "callers": ["UI-ROOT-APP-ROUTE"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3::Integration::001::REQ-3-INTEGRATION-BOOKING-SHELL",
+        "req_id": "REQ-3",
+        "interface_ids": ["UI-REQ-3-BOOKING-PAGE-SHELL"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-3-booking-shell.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-3",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-3 (design): add booking shell sections and parent integration test."
+      }
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "task": {
+    "node_id": "REQ-2.3",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-2.3-RESULT-BOOKING-ENTRY",
+      "req_ids": ["REQ-2.3"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-2.3-RESULT-BOOKING-ENTRY",
+        "type": "UI",
+        "name": "Result List Booking Entry",
+        "description": "Exposes a booking action on a specific train row and enters the booking page route with the selected train identifier.",
+        "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+        "callees": ["API-BE-SEARCH-TRAIN-DETAIL"]
+      },
+      "file_path": "frontend/src/pages/SearchResultsPage.tsx",
+      "first_line": "export default function SearchResultsPage() {",
+      "implemented": false,
+      "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+      "callees": ["API-BE-SEARCH-TRAIN-DETAIL"]
+    },
+    {
+      "interface_id": "API-BE-SEARCH-TRAIN-DETAIL",
+      "req_ids": ["REQ-2.3"],
+      "type": "API",
+      "content": {
+        "interface_id": "API-BE-SEARCH-TRAIN-DETAIL",
+        "type": "API",
+        "name": "Train Detail Route",
+        "description": "Loads the full detail of a selected train by its identifier.",
+        "callers": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY"],
+        "callees": ["FUNC-BE-SEARCH-TRAIN-LOOKUP"]
+      },
+      "file_path": "backend/src/routes/search.js",
+      "first_line": "router.get('/trains/:trainId', async (req, res, next) => {",
+      "implemented": false,
+      "callers": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY"],
+      "callees": ["FUNC-BE-SEARCH-TRAIN-LOOKUP"]
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-2.3-INTEGRATION-TRAIN-DETAIL-API",
+      "req_id": "REQ-2.3",
+      "interface_ids": ["API-BE-SEARCH-TRAIN-DETAIL"],
+      "type": "Integration",
+      "file_path": "backend/tests/req-2.3-train-detail.integration.test.js",
+      "first_line": "const request = require('supertest');"
+    },
+    {
+      "test_id": "REQ-2.3-INTEGRATION-BOOKING-ENTRY-UI",
+      "req_id": "REQ-2.3",
+      "interface_ids": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-2.3-booking-entry.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    },
+    {
+      "test_id": "REQ-2.3-E2E-BOOKING-ENTRY",
+      "req_id": "REQ-2.3",
+      "interface_ids": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY", "API-BE-SEARCH-TRAIN-DETAIL"],
+      "type": "E2E",
+      "file_path": "backend/test-e2e/req-2.3-booking-entry.e2e.spec.js",
+      "first_line": "const { expect, test } = require('@playwright/test');"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-2.3-RESULT-BOOKING-ENTRY",
+        "req_ids": ["REQ-2.3"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-2.3-RESULT-BOOKING-ENTRY\",\"type\":\"UI\",\"name\":\"Result List Booking Entry\",\"description\":\"Exposes a booking action on a specific train row and enters the booking page route with the selected train identifier.\",\"callers\":[\"UI-REQ-2-RESULT-PAGE-SHELL\"],\"callees\":[\"API-BE-SEARCH-TRAIN-DETAIL\"]}",
+        "file_path": "frontend/src/pages/SearchResultsPage.tsx",
+        "first_line": "export default function SearchResultsPage() {",
+        "implemented": false,
+        "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+        "callees": ["API-BE-SEARCH-TRAIN-DETAIL"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "API-BE-SEARCH-TRAIN-DETAIL",
+        "req_ids": ["REQ-2.3"],
+        "type": "API",
+        "content": "{\"interface_id\":\"API-BE-SEARCH-TRAIN-DETAIL\",\"type\":\"API\",\"name\":\"Train Detail Route\",\"description\":\"Loads the full detail of a selected train by its identifier.\",\"callers\":[\"UI-REQ-2.3-RESULT-BOOKING-ENTRY\"],\"callees\":[\"FUNC-BE-SEARCH-TRAIN-LOOKUP\"]}",
+        "file_path": "backend/src/routes/search.js",
+        "first_line": "router.get('/trains/:trainId', async (req, res, next) => {",
+        "implemented": false,
+        "callers": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY"],
+        "callees": ["FUNC-BE-SEARCH-TRAIN-LOOKUP"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2.3::Integration::001::REQ-2.3-INTEGRATION-TRAIN-DETAIL-API",
+        "req_id": "REQ-2.3",
+        "interface_ids": ["API-BE-SEARCH-TRAIN-DETAIL"],
+        "type": "Integration",
+        "file_path": "backend/tests/req-2.3-train-detail.integration.test.js",
+        "first_line": "const request = require('supertest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2.3::Integration::002::REQ-2.3-INTEGRATION-BOOKING-ENTRY-UI",
+        "req_id": "REQ-2.3",
+        "interface_ids": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-2.3-booking-entry.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2.3::E2E::003::REQ-2.3-E2E-BOOKING-ENTRY",
+        "req_id": "REQ-2.3",
+        "interface_ids": ["UI-REQ-2.3-RESULT-BOOKING-ENTRY", "API-BE-SEARCH-TRAIN-DETAIL"],
+        "type": "E2E",
+        "file_path": "backend/test-e2e/req-2.3-booking-entry.e2e.spec.js",
+        "first_line": "const { expect, test } = require('@playwright/test');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2.3",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-2.3 (design): add booking-entry page shell and selected-train test batch."
+      }
+    }
+  ]
+}

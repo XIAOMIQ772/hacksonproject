@@ -1,0 +1,61 @@
+{
+  "competition": {
+    "id": "smoke-evolution",
+    "title": "Smoke Competition (Evolution)",
+    "type": "demo",
+    "summary": "Extend the generated counter and dice applications with small new behaviors while preserving their existing features.",
+    "task_count": 2,
+    "total_tests": 4,
+    "is_public": true,
+    "starts_at": "2026-09-01",
+    "ends_at": "2026-10-17",
+    "status": "open",
+    "notice": "Use generated outputs from the Smoke Competition as the starting templates for both evolution tasks.",
+    "template_required": true,
+    "template_source_competition_id": "smoke",
+    "initial_budget_cny": null,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "smoke-evolution--counter",
+        "display_id": "TASK-017",
+        "title": "ARC Counter Evolution Smoke Test",
+        "category": "web",
+        "summary": "Extend the existing counter application with a reset control without breaking its increment and decrement behavior.",
+        "test_runner": "playwright",
+        "total_tests": 2,
+        "module_count": 2,
+        "assets_base_url": "http://arc-bench.com/api/requirements/smoke-evolution--counter/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/smoke-evolution--counter/references?catalog=competition"
+      },
+      {
+        "id": "smoke-evolution--dice",
+        "display_id": "TASK-018",
+        "title": "ARC Dice Evolution Smoke Test",
+        "category": "web",
+        "summary": "Extend the existing dice application with a roll counter without breaking its six-sided roll behavior.",
+        "test_runner": "playwright",
+        "total_tests": 2,
+        "module_count": 2,
+        "assets_base_url": "http://arc-bench.com/api/requirements/smoke-evolution--dice/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/smoke-evolution--dice/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:47:09+0800",
+  "dirs": {
+    "smoke-evolution--counter": "017-counter",
+    "smoke-evolution--dice": "018-dice"
+  }
+}

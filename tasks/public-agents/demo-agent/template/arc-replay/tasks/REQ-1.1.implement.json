@@ -1,0 +1,81 @@
+{
+  "task": {
+    "node_id": "REQ-1.1",
+    "phase": "implement"
+  },
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "UI-REQ-1.1-REGISTER-PAGE",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "API-BE-AUTH-REGISTER",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "FUNC-BE-AUTH-REGISTER-ACCOUNT",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "DB-BE-AUTH-USERS-INSERT",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1.1",
+        "state": "IMPLEMENTED"
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-1.1::Unit::001::REQ-1.1-UNIT-REGISTER-PAYLOAD": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-1.1::Integration::002::REQ-1.1-INTEGRATION-REGISTER-API": true,
+          "REQ-1.1::Integration::003::REQ-1.1-INTEGRATION-REGISTER-PAGE": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-1.1::E2E::004::REQ-1.1-E2E-REGISTER-ENTRY": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1.1",
+        "state": "PASSED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-1.1 (implement): implement registration validation, persistence, and authenticated UI transition."
+      }
+    }
+  ]
+}

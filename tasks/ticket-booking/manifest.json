@@ -1,0 +1,48 @@
+{
+  "competition": {
+    "id": "ticket-booking",
+    "title": "Ticket Booking",
+    "type": "demo",
+    "summary": "Implement the requirements of the Ticket Booking app, using data/playground/web/ticketbooking as a reference.",
+    "task_count": 1,
+    "total_tests": 10,
+    "is_public": true,
+    "starts_at": "2026-09-01",
+    "ends_at": "2026-10-17",
+    "status": "open",
+    "notice": "Task packs are ready. Create a submission from this competition page.",
+    "template_required": false,
+    "template_source_competition_id": null,
+    "initial_budget_cny": null,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "ticket-booking--ticket-booking",
+        "display_id": "TASK-019",
+        "title": "火车票预订演示系统",
+        "category": "web",
+        "summary": "一个小型火车票预订网站，访客可以注册账号、登录系统、搜索已发布的车次，并在登录后提交乘客信息完成订票。\n账号、登录会话和已确认订单需要持久化，页面刷新或服务重启后仍可恢复。\n系统只实现教学演示所需的完整主流程，不包含在线支付、退票、改签、取消订单、座位库存扣减、历史订单列表和时刻表管理。\n首页视觉参考：![首页](./reference/homepage.png)",
+        "test_runner": "playwright",
+        "total_tests": 10,
+        "module_count": 2,
+        "assets_base_url": "http://arc-bench.com/api/requirements/ticket-booking--ticket-booking/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/ticket-booking--ticket-booking/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:47:11+0800",
+  "dirs": {
+    "ticket-booking--ticket-booking": "019-ticket-booking"
+  }
+}

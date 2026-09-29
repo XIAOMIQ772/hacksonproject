@@ -1,0 +1,61 @@
+{
+  "competition": {
+    "id": "hackathon",
+    "title": "Agentic Software Factory Hackathon",
+    "type": "official",
+    "summary": "Build a software factory that compiles large requirements into reliable GitHub-style collaboration and spreadsheet applications.",
+    "task_count": 2,
+    "total_tests": 200,
+    "is_public": true,
+    "starts_at": "2026-09-01",
+    "ends_at": "2026-10-17",
+    "status": "open",
+    "notice": "The hackathon focuses on software factory decomposition, requirements compilation, and two concrete task packs.",
+    "template_required": false,
+    "template_source_competition_id": null,
+    "initial_budget_cny": 500.0,
+    "downloads": null,
+    "tasks": [
+      {
+        "id": "hackathon--github",
+        "display_id": "TASK-011",
+        "title": "GitHub Collaboration Platform Core Requirements",
+        "category": "web",
+        "summary": "This product is a simplified GitHub collaboration platform. Unless an atomic requirement explicitly allows more than one role, every quoted user-interface name is the exact English accessible name of the control; the role, scope, and observable-state rules stated by each atomic requirement are authoritative. Values described as existing accounts, organizations, teams, repositories, branches, files, commits, issues, milestones, pull requests, reviews, and permission relationships are predefined seed data. The application must provision those records before the corresponding scenario and supply each account through an isolated browser session; they are not extra features that a participant must expose through a private API. Generated names may contain a unique suffix, but their role, ownership, visibility, and relationships are exactly those stated in the atomic requirement. Every atomic requirement remains enabled even when seed configuration is incomplete. All write operations must be persisted on the server, checked against the current session and target-object permission, and completed atomically. Organization Owner, repository Admin, Read, Triage, Write, Maintain, and Admin permissions follow the operation-specific rules in the requirements below; these roles are not an automatic cumulative ladder. Real-time collaboration, Actions, Packages, Wiki, project boards, notification delivery, and external Git remote protocols are outside the scope of this product.",
+        "test_runner": "playwright",
+        "total_tests": 100,
+        "module_count": 47,
+        "assets_base_url": "http://arc-bench.com/api/requirements/hackathon--github/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/hackathon--github/references?catalog=competition"
+      },
+      {
+        "id": "hackathon--sheet",
+        "display_id": "TASK-012",
+        "title": "Core Requirements for an Online Spreadsheet Data Workspace",
+        "category": "web",
+        "summary": "A streamlined online spreadsheet application with an interface modeled after Google Sheets, covering workbook and worksheet management, spreadsheet data editing, formula calculation, sorting and filtering, data validation, and basic pivot analysis. Sharing and collaboration, version-history restoration, advanced visual styling, charts, macros, real-time collaborative cursors, and integrations with external office suites are outside the core scope.",
+        "test_runner": "playwright",
+        "total_tests": 100,
+        "module_count": 24,
+        "assets_base_url": "http://arc-bench.com/api/requirements/hackathon--sheet/assets?catalog=competition",
+        "references_base_url": "http://arc-bench.com/api/requirements/hackathon--sheet/references?catalog=competition"
+      }
+    ],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:46:51+0800",
+  "dirs": {
+    "hackathon--github": "011-github",
+    "hackathon--sheet": "012-sheet"
+  }
+}

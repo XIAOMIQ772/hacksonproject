@@ -1,0 +1,36 @@
+{
+  "task": {
+    "node_id": "ROOT",
+    "phase": "implement"
+  },
+  "notes": "Finalize the root app-route assembly, normalize replay ordering for earlier implement tasks, and close the queue replay set.",
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "UI-ROOT-APP-ROUTE",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "ROOT",
+        "state": "IMPLEMENTED"
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "ROOT",
+        "state": "PASSED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "ROOT (implement): finalize root route replay coverage and queue completion audit."
+      }
+    }
+  ]
+}

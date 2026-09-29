@@ -1,0 +1,33 @@
+{
+  "competition": {
+    "id": "ticket-booking-evolution",
+    "title": "Ticket Booking (Evolution)",
+    "type": "demo",
+    "summary": "Extend the requirements of the Ticket Booking app, using data/playground/web/ticketbooking as a reference.",
+    "task_count": 0,
+    "total_tests": 0,
+    "is_public": true,
+    "starts_at": "2026-09-01",
+    "ends_at": "2026-10-17",
+    "status": "open",
+    "notice": "No tasks have been published yet. Add task folders directly to the competition directory.",
+    "template_required": true,
+    "template_source_competition_id": "ticket-booking",
+    "initial_budget_cny": null,
+    "downloads": null,
+    "tasks": [],
+    "flow": [
+      "Upload an agent snapshot or select a built-in one.",
+      "Compile the large requirement into smaller runnable modules.",
+      "Run the GitHub-style and spreadsheet-style tasks in order.",
+      "Inspect evidence and refine the system until the output is stable."
+    ],
+    "rules": [
+      "Treat the requirement document as the source of truth.",
+      "Keep changes small enough to verify each step.",
+      "Use the task artifacts to explain what your agent changed."
+    ]
+  },
+  "fetched_at": "2026-09-29T17:47:14+0800",
+  "dirs": {}
+}

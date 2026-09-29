@@ -1,0 +1,11 @@
+{
+  "id": "arc-bench-lite--keep",
+  "display_id": "TASK-002",
+  "competition": "arc-bench-lite",
+  "title": "Keep",
+  "test_runner": "playwright",
+  "total_tests": 32,
+  "test_files": 33,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:43:21+0800"
+}

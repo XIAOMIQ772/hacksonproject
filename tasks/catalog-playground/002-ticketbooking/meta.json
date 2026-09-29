@@ -1,0 +1,11 @@
+{
+  "id": "ticketbooking",
+  "display_id": "TASK-002",
+  "competition": "playground",
+  "title": "Railway Ticket Booking Demo",
+  "test_runner": "playwright",
+  "total_tests": 30,
+  "test_files": 7,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:47:56+0800"
+}

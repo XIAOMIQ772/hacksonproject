@@ -1,0 +1,233 @@
+{
+  "task": {
+    "node_id": "REQ-1.2",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-1.2-LOGIN-PAGE",
+      "req_ids": ["REQ-1.2"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-1.2-LOGIN-PAGE",
+        "type": "UI",
+        "name": "Login Page",
+        "description": "Collects username or email plus password for an existing account login.",
+        "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+        "callees": ["API-FE-AUTH-LOGIN"]
+      },
+      "file_path": "frontend/src/pages/LoginPage.tsx",
+      "first_line": "export default function LoginPage() {",
+      "implemented": false,
+      "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+      "callees": ["API-FE-AUTH-LOGIN"]
+    },
+    {
+      "interface_id": "API-BE-AUTH-LOGIN",
+      "req_ids": ["REQ-1.2"],
+      "type": "API",
+      "content": {
+        "interface_id": "API-BE-AUTH-LOGIN",
+        "type": "API",
+        "name": "Login Route",
+        "description": "Accepts POST /api/auth/login and returns a session token for an existing account.",
+        "callers": ["API-FE-AUTH-LOGIN"],
+        "callees": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"]
+      },
+      "file_path": "backend/src/routes/auth.js",
+      "first_line": "router.post('/login', async (req, res, next) => {",
+      "implemented": false,
+      "callers": ["API-FE-AUTH-LOGIN"],
+      "callees": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"]
+    },
+    {
+      "interface_id": "FUNC-BE-AUTH-BUILD-LOGIN-SESSION",
+      "req_ids": ["REQ-1.2"],
+      "type": "FUNC",
+      "content": {
+        "interface_id": "FUNC-BE-AUTH-BUILD-LOGIN-SESSION",
+        "type": "FUNC",
+        "name": "Login Session Service",
+        "description": "Validates credentials, resolves the persisted account, and creates a login session token.",
+        "callers": ["API-BE-AUTH-LOGIN"],
+        "callees": ["DB-BE-AUTH-USERS-LOOKUP"]
+      },
+      "file_path": "backend/src/services/auth_service.js",
+      "first_line": "async function buildLoginSession(body = {}) {",
+      "implemented": false,
+      "callers": ["API-BE-AUTH-LOGIN"],
+      "callees": ["DB-BE-AUTH-USERS-LOOKUP"]
+    },
+    {
+      "interface_id": "DB-BE-AUTH-USERS-LOOKUP",
+      "req_ids": ["REQ-1.2"],
+      "type": "DB",
+      "content": {
+        "interface_id": "DB-BE-AUTH-USERS-LOOKUP",
+        "type": "DB",
+        "name": "User Lookup Repository",
+        "description": "Looks up the persisted user by username or email before a session is created.",
+        "callers": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"],
+        "callees": []
+      },
+      "file_path": "backend/src/repositories/auth_repository.js",
+      "first_line": "async function findUserByAccount(account) {",
+      "implemented": false,
+      "callers": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"],
+      "callees": []
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-1.2-UNIT-LOGIN-PAYLOAD",
+      "req_id": "REQ-1.2",
+      "interface_ids": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"],
+      "type": "Unit",
+      "file_path": "backend/tests/req-1.2-login.unit.test.js",
+      "first_line": "const { describe, expect, it } = require('vitest');"
+    },
+    {
+      "test_id": "REQ-1.2-INTEGRATION-LOGIN-API",
+      "req_id": "REQ-1.2",
+      "interface_ids": ["API-BE-AUTH-LOGIN", "FUNC-BE-AUTH-BUILD-LOGIN-SESSION", "DB-BE-AUTH-USERS-LOOKUP"],
+      "type": "Integration",
+      "file_path": "backend/tests/req-1.2-login.integration.test.js",
+      "first_line": "const request = require('supertest');"
+    },
+    {
+      "test_id": "REQ-1.2-INTEGRATION-LOGIN-PAGE",
+      "req_id": "REQ-1.2",
+      "interface_ids": ["UI-REQ-1.2-LOGIN-PAGE", "API-FE-AUTH-LOGIN"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-1.2-login.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    },
+    {
+      "test_id": "REQ-1.2-E2E-LOGIN-ENTRY",
+      "req_id": "REQ-1.2",
+      "interface_ids": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL", "UI-REQ-1.2-LOGIN-PAGE", "API-BE-AUTH-LOGIN"],
+      "type": "E2E",
+      "file_path": "backend/test-e2e/req-1.2-login.e2e.spec.js",
+      "first_line": "const { expect, test } = require('@playwright/test');"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-1.2-LOGIN-PAGE",
+        "req_ids": ["REQ-1.2"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-1.2-LOGIN-PAGE\",\"type\":\"UI\",\"name\":\"Login Page\",\"description\":\"Collects username or email plus password for an existing account login.\",\"callers\":[\"UI-REQ-1-HOMEPAGE-PUBLIC-SHELL\"],\"callees\":[\"API-FE-AUTH-LOGIN\"]}",
+        "file_path": "frontend/src/pages/LoginPage.tsx",
+        "first_line": "export default function LoginPage() {",
+        "implemented": false,
+        "callers": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL"],
+        "callees": ["API-FE-AUTH-LOGIN"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "API-BE-AUTH-LOGIN",
+        "req_ids": ["REQ-1.2"],
+        "type": "API",
+        "content": "{\"interface_id\":\"API-BE-AUTH-LOGIN\",\"type\":\"API\",\"name\":\"Login Route\",\"description\":\"Accepts POST /api/auth/login and returns a session token for an existing account.\",\"callers\":[\"API-FE-AUTH-LOGIN\"],\"callees\":[\"FUNC-BE-AUTH-BUILD-LOGIN-SESSION\"]}",
+        "file_path": "backend/src/routes/auth.js",
+        "first_line": "router.post('/login', async (req, res, next) => {",
+        "implemented": false,
+        "callers": ["API-FE-AUTH-LOGIN"],
+        "callees": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "FUNC-BE-AUTH-BUILD-LOGIN-SESSION",
+        "req_ids": ["REQ-1.2"],
+        "type": "FUNC",
+        "content": "{\"interface_id\":\"FUNC-BE-AUTH-BUILD-LOGIN-SESSION\",\"type\":\"FUNC\",\"name\":\"Login Session Service\",\"description\":\"Validates credentials, resolves the persisted account, and creates a login session token.\",\"callers\":[\"API-BE-AUTH-LOGIN\"],\"callees\":[\"DB-BE-AUTH-USERS-LOOKUP\"]}",
+        "file_path": "backend/src/services/auth_service.js",
+        "first_line": "async function buildLoginSession(body = {}) {",
+        "implemented": false,
+        "callers": ["API-BE-AUTH-LOGIN"],
+        "callees": ["DB-BE-AUTH-USERS-LOOKUP"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "DB-BE-AUTH-USERS-LOOKUP",
+        "req_ids": ["REQ-1.2"],
+        "type": "DB",
+        "content": "{\"interface_id\":\"DB-BE-AUTH-USERS-LOOKUP\",\"type\":\"DB\",\"name\":\"User Lookup Repository\",\"description\":\"Looks up the persisted user by username or email before a session is created.\",\"callers\":[\"FUNC-BE-AUTH-BUILD-LOGIN-SESSION\"],\"callees\":[]}",
+        "file_path": "backend/src/repositories/auth_repository.js",
+        "first_line": "async function findUserByAccount(account) {",
+        "implemented": false,
+        "callers": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.2::Unit::001::REQ-1.2-UNIT-LOGIN-PAYLOAD",
+        "req_id": "REQ-1.2",
+        "interface_ids": ["FUNC-BE-AUTH-BUILD-LOGIN-SESSION"],
+        "type": "Unit",
+        "file_path": "backend/tests/req-1.2-login.unit.test.js",
+        "first_line": "const { describe, expect, it } = require('vitest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.2::Integration::002::REQ-1.2-INTEGRATION-LOGIN-API",
+        "req_id": "REQ-1.2",
+        "interface_ids": ["API-BE-AUTH-LOGIN", "FUNC-BE-AUTH-BUILD-LOGIN-SESSION", "DB-BE-AUTH-USERS-LOOKUP"],
+        "type": "Integration",
+        "file_path": "backend/tests/req-1.2-login.integration.test.js",
+        "first_line": "const request = require('supertest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.2::Integration::003::REQ-1.2-INTEGRATION-LOGIN-PAGE",
+        "req_id": "REQ-1.2",
+        "interface_ids": ["UI-REQ-1.2-LOGIN-PAGE", "API-FE-AUTH-LOGIN"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-1.2-login.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-1.2::E2E::004::REQ-1.2-E2E-LOGIN-ENTRY",
+        "req_id": "REQ-1.2",
+        "interface_ids": ["UI-REQ-1-HOMEPAGE-PUBLIC-SHELL", "UI-REQ-1.2-LOGIN-PAGE", "API-BE-AUTH-LOGIN"],
+        "type": "E2E",
+        "file_path": "backend/test-e2e/req-1.2-login.e2e.spec.js",
+        "first_line": "const { expect, test } = require('@playwright/test');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1.2",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-1.2 (design): scaffold login UI and login test batch."
+      }
+    }
+  ]
+}

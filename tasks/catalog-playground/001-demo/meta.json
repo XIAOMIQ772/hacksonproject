@@ -1,0 +1,11 @@
+{
+  "id": "__demo__",
+  "display_id": "TASK-001",
+  "competition": "playground",
+  "title": "Demo",
+  "test_runner": "playwright",
+  "total_tests": 1,
+  "test_files": 1,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:47:53+0800"
+}

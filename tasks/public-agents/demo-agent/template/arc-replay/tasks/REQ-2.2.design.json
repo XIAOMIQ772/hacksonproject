@@ -1,0 +1,117 @@
+{
+  "task": {
+    "node_id": "REQ-2.2",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-2.2-EMPTY-RESULT-STATE",
+      "req_ids": ["REQ-2.2"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-2.2-EMPTY-RESULT-STATE",
+        "type": "UI",
+        "name": "Empty Result State",
+        "description": "Renders an explicit empty-result panel while preserving the submitted search criteria.",
+        "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+        "callees": ["API-BE-SEARCH-TICKETS"]
+      },
+      "file_path": "frontend/src/pages/SearchResultsPage.tsx",
+      "first_line": "export default function SearchResultsPage() {",
+      "implemented": false,
+      "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+      "callees": ["API-BE-SEARCH-TICKETS"]
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-2.2-INTEGRATION-SEARCH-EMPTY-API",
+      "req_id": "REQ-2.2",
+      "interface_ids": ["API-BE-SEARCH-TICKETS", "FUNC-BE-SEARCH-TICKET-QUERY", "DB-BE-TRAINS-BY-ROUTE"],
+      "type": "Integration",
+      "file_path": "backend/tests/req-2.2-empty-results.integration.test.js",
+      "first_line": "const request = require('supertest');"
+    },
+    {
+      "test_id": "REQ-2.2-INTEGRATION-SEARCH-EMPTY-UI",
+      "req_id": "REQ-2.2",
+      "interface_ids": ["UI-REQ-2.2-EMPTY-RESULT-STATE"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-2.2-empty-results.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    },
+    {
+      "test_id": "REQ-2.2-E2E-SEARCH-EMPTY",
+      "req_id": "REQ-2.2",
+      "interface_ids": ["UI-REQ-2.2-EMPTY-RESULT-STATE", "API-BE-SEARCH-TICKETS"],
+      "type": "E2E",
+      "file_path": "backend/test-e2e/req-2.2-empty-results.e2e.spec.js",
+      "first_line": "const { expect, test } = require('@playwright/test');"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-2.2-EMPTY-RESULT-STATE",
+        "req_ids": ["REQ-2.2"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-2.2-EMPTY-RESULT-STATE\",\"type\":\"UI\",\"name\":\"Empty Result State\",\"description\":\"Renders an explicit empty-result panel while preserving the submitted search criteria.\",\"callers\":[\"UI-REQ-2-RESULT-PAGE-SHELL\"],\"callees\":[\"API-BE-SEARCH-TICKETS\"]}",
+        "file_path": "frontend/src/pages/SearchResultsPage.tsx",
+        "first_line": "export default function SearchResultsPage() {",
+        "implemented": false,
+        "callers": ["UI-REQ-2-RESULT-PAGE-SHELL"],
+        "callees": ["API-BE-SEARCH-TICKETS"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2.2::Integration::001::REQ-2.2-INTEGRATION-SEARCH-EMPTY-API",
+        "req_id": "REQ-2.2",
+        "interface_ids": ["API-BE-SEARCH-TICKETS", "FUNC-BE-SEARCH-TICKET-QUERY", "DB-BE-TRAINS-BY-ROUTE"],
+        "type": "Integration",
+        "file_path": "backend/tests/req-2.2-empty-results.integration.test.js",
+        "first_line": "const request = require('supertest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2.2::Integration::002::REQ-2.2-INTEGRATION-SEARCH-EMPTY-UI",
+        "req_id": "REQ-2.2",
+        "interface_ids": ["UI-REQ-2.2-EMPTY-RESULT-STATE"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-2.2-empty-results.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-2.2::E2E::003::REQ-2.2-E2E-SEARCH-EMPTY",
+        "req_id": "REQ-2.2",
+        "interface_ids": ["UI-REQ-2.2-EMPTY-RESULT-STATE", "API-BE-SEARCH-TICKETS"],
+        "type": "E2E",
+        "file_path": "backend/test-e2e/req-2.2-empty-results.e2e.spec.js",
+        "first_line": "const { expect, test } = require('@playwright/test');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-2.2",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-2.2 (design): add explicit empty-result test batch."
+      }
+    }
+  ]
+}

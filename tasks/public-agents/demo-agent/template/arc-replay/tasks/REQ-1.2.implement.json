@@ -1,0 +1,81 @@
+{
+  "task": {
+    "node_id": "REQ-1.2",
+    "phase": "implement"
+  },
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "UI-REQ-1.2-LOGIN-PAGE",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "API-BE-AUTH-LOGIN",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "FUNC-BE-AUTH-BUILD-LOGIN-SESSION",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_interface_implemented",
+      "params": {
+        "interface_id": "DB-BE-AUTH-USERS-LOOKUP",
+        "implemented": true
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1.2",
+        "state": "IMPLEMENTED"
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-1.2::Unit::001::REQ-1.2-UNIT-LOGIN-PAYLOAD": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-1.2::Integration::002::REQ-1.2-INTEGRATION-LOGIN-API": true,
+          "REQ-1.2::Integration::003::REQ-1.2-INTEGRATION-LOGIN-PAGE": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.set_test_pass_statuses",
+      "params": {
+        "status_by_test_id": {
+          "REQ-1.2::E2E::004::REQ-1.2-E2E-LOGIN-ENTRY": true
+        }
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-1.2",
+        "state": "PASSED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-1.2 (implement): implement login credential validation and session creation."
+      }
+    }
+  ]
+}

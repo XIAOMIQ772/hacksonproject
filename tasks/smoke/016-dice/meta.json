@@ -1,0 +1,11 @@
+{
+  "id": "smoke--dice",
+  "display_id": "TASK-016",
+  "competition": "smoke",
+  "title": "ARC Dice Smoke Test",
+  "test_runner": "playwright",
+  "total_tests": 1,
+  "test_files": 1,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:47:08+0800"
+}

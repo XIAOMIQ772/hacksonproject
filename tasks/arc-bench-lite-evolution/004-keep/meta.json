@@ -1,0 +1,11 @@
+{
+  "id": "arc-bench-lite-evolution--keep",
+  "display_id": "TASK-004",
+  "competition": "arc-bench-lite-evolution",
+  "title": "Keep Evolution",
+  "test_runner": "playwright",
+  "total_tests": 6,
+  "test_files": 7,
+  "tests_available": true,
+  "fetched_at": "2026-09-29T17:43:29+0800"
+}

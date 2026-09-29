@@ -1,0 +1,233 @@
+{
+  "task": {
+    "node_id": "REQ-3.2",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-3.2-BOOKING-FORM",
+      "req_ids": ["REQ-3.2"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-3.2-BOOKING-FORM",
+        "type": "UI",
+        "name": "Booking Passenger Form",
+        "description": "Collects passenger name, ID number, and seat type before booking submission.",
+        "callers": ["UI-REQ-3-BOOKING-PAGE-SHELL"],
+        "callees": ["API-BE-BOOKING-ORDERS"]
+      },
+      "file_path": "frontend/src/pages/BookingPage.tsx",
+      "first_line": "export default function BookingPage() {",
+      "implemented": false,
+      "callers": ["UI-REQ-3-BOOKING-PAGE-SHELL"],
+      "callees": ["API-BE-BOOKING-ORDERS"]
+    },
+    {
+      "interface_id": "API-BE-BOOKING-ORDERS",
+      "req_ids": ["REQ-3.2"],
+      "type": "API",
+      "content": {
+        "interface_id": "API-BE-BOOKING-ORDERS",
+        "type": "API",
+        "name": "Create Booking Route",
+        "description": "Accepts POST /api/booking/orders and returns a booking creation result for the current user.",
+        "callers": ["UI-REQ-3.2-BOOKING-FORM"],
+        "callees": ["FUNC-BE-CREATE-BOOKING-RECORD"]
+      },
+      "file_path": "backend/src/routes/booking.js",
+      "first_line": "router.post('/orders', async (req, res, next) => {",
+      "implemented": false,
+      "callers": ["UI-REQ-3.2-BOOKING-FORM"],
+      "callees": ["FUNC-BE-CREATE-BOOKING-RECORD"]
+    },
+    {
+      "interface_id": "FUNC-BE-CREATE-BOOKING-RECORD",
+      "req_ids": ["REQ-3.2"],
+      "type": "FUNC",
+      "content": {
+        "interface_id": "FUNC-BE-CREATE-BOOKING-RECORD",
+        "type": "FUNC",
+        "name": "Create Booking Record Service",
+        "description": "Validates passenger fields, binds the current user and train, and creates a booking record.",
+        "callers": ["API-BE-BOOKING-ORDERS"],
+        "callees": ["DB-BE-BOOKINGS-INSERT"]
+      },
+      "file_path": "backend/src/services/booking_service.js",
+      "first_line": "async function createBookingRecord({",
+      "implemented": false,
+      "callers": ["API-BE-BOOKING-ORDERS"],
+      "callees": ["DB-BE-BOOKINGS-INSERT"]
+    },
+    {
+      "interface_id": "DB-BE-BOOKINGS-INSERT",
+      "req_ids": ["REQ-3.2"],
+      "type": "DB",
+      "content": {
+        "interface_id": "DB-BE-BOOKINGS-INSERT",
+        "type": "DB",
+        "name": "Insert Booking Repository",
+        "description": "Persists a booking row for the current user and selected train.",
+        "callers": ["FUNC-BE-CREATE-BOOKING-RECORD"],
+        "callees": []
+      },
+      "file_path": "backend/src/repositories/booking_repository.js",
+      "first_line": "async function insertBooking({",
+      "implemented": false,
+      "callers": ["FUNC-BE-CREATE-BOOKING-RECORD"],
+      "callees": []
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-3.2-UNIT-BOOKING-VALIDATION",
+      "req_id": "REQ-3.2",
+      "interface_ids": ["FUNC-BE-CREATE-BOOKING-RECORD"],
+      "type": "Unit",
+      "file_path": "backend/tests/req-3.2-create-booking.unit.test.js",
+      "first_line": "const { describe, expect, it } = require('vitest');"
+    },
+    {
+      "test_id": "REQ-3.2-INTEGRATION-BOOKING-SUBMIT-API",
+      "req_id": "REQ-3.2",
+      "interface_ids": ["API-BE-BOOKING-ORDERS", "FUNC-BE-CREATE-BOOKING-RECORD", "DB-BE-BOOKINGS-INSERT"],
+      "type": "Integration",
+      "file_path": "backend/tests/req-3.2-booking-submit.integration.test.js",
+      "first_line": "const request = require('supertest');"
+    },
+    {
+      "test_id": "REQ-3.2-INTEGRATION-BOOKING-FORM-UI",
+      "req_id": "REQ-3.2",
+      "interface_ids": ["UI-REQ-3.2-BOOKING-FORM"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-3.2-booking-form.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    },
+    {
+      "test_id": "REQ-3.2-E2E-BOOKING-SUBMIT",
+      "req_id": "REQ-3.2",
+      "interface_ids": ["UI-REQ-3.2-BOOKING-FORM", "API-BE-BOOKING-ORDERS"],
+      "type": "E2E",
+      "file_path": "backend/test-e2e/req-3.2-booking-submit.e2e.spec.js",
+      "first_line": "const { expect, test } = require('@playwright/test');"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-3.2-BOOKING-FORM",
+        "req_ids": ["REQ-3.2"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-3.2-BOOKING-FORM\",\"type\":\"UI\",\"name\":\"Booking Passenger Form\",\"description\":\"Collects passenger name, ID number, and seat type before booking submission.\",\"callers\":[\"UI-REQ-3-BOOKING-PAGE-SHELL\"],\"callees\":[\"API-BE-BOOKING-ORDERS\"]}",
+        "file_path": "frontend/src/pages/BookingPage.tsx",
+        "first_line": "export default function BookingPage() {",
+        "implemented": false,
+        "callers": ["UI-REQ-3-BOOKING-PAGE-SHELL"],
+        "callees": ["API-BE-BOOKING-ORDERS"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "API-BE-BOOKING-ORDERS",
+        "req_ids": ["REQ-3.2"],
+        "type": "API",
+        "content": "{\"interface_id\":\"API-BE-BOOKING-ORDERS\",\"type\":\"API\",\"name\":\"Create Booking Route\",\"description\":\"Accepts POST /api/booking/orders and returns a booking creation result for the current user.\",\"callers\":[\"UI-REQ-3.2-BOOKING-FORM\"],\"callees\":[\"FUNC-BE-CREATE-BOOKING-RECORD\"]}",
+        "file_path": "backend/src/routes/booking.js",
+        "first_line": "router.post('/orders', async (req, res, next) => {",
+        "implemented": false,
+        "callers": ["UI-REQ-3.2-BOOKING-FORM"],
+        "callees": ["FUNC-BE-CREATE-BOOKING-RECORD"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "FUNC-BE-CREATE-BOOKING-RECORD",
+        "req_ids": ["REQ-3.2"],
+        "type": "FUNC",
+        "content": "{\"interface_id\":\"FUNC-BE-CREATE-BOOKING-RECORD\",\"type\":\"FUNC\",\"name\":\"Create Booking Record Service\",\"description\":\"Validates passenger fields, binds the current user and train, and creates a booking record.\",\"callers\":[\"API-BE-BOOKING-ORDERS\"],\"callees\":[\"DB-BE-BOOKINGS-INSERT\"]}",
+        "file_path": "backend/src/services/booking_service.js",
+        "first_line": "async function createBookingRecord({",
+        "implemented": false,
+        "callers": ["API-BE-BOOKING-ORDERS"],
+        "callees": ["DB-BE-BOOKINGS-INSERT"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "DB-BE-BOOKINGS-INSERT",
+        "req_ids": ["REQ-3.2"],
+        "type": "DB",
+        "content": "{\"interface_id\":\"DB-BE-BOOKINGS-INSERT\",\"type\":\"DB\",\"name\":\"Insert Booking Repository\",\"description\":\"Persists a booking row for the current user and selected train.\",\"callers\":[\"FUNC-BE-CREATE-BOOKING-RECORD\"],\"callees\":[]}",
+        "file_path": "backend/src/repositories/booking_repository.js",
+        "first_line": "async function insertBooking({",
+        "implemented": false,
+        "callers": ["FUNC-BE-CREATE-BOOKING-RECORD"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.2::Unit::001::REQ-3.2-UNIT-BOOKING-VALIDATION",
+        "req_id": "REQ-3.2",
+        "interface_ids": ["FUNC-BE-CREATE-BOOKING-RECORD"],
+        "type": "Unit",
+        "file_path": "backend/tests/req-3.2-create-booking.unit.test.js",
+        "first_line": "const { describe, expect, it } = require('vitest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.2::Integration::002::REQ-3.2-INTEGRATION-BOOKING-SUBMIT-API",
+        "req_id": "REQ-3.2",
+        "interface_ids": ["API-BE-BOOKING-ORDERS", "FUNC-BE-CREATE-BOOKING-RECORD", "DB-BE-BOOKINGS-INSERT"],
+        "type": "Integration",
+        "file_path": "backend/tests/req-3.2-booking-submit.integration.test.js",
+        "first_line": "const request = require('supertest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.2::Integration::003::REQ-3.2-INTEGRATION-BOOKING-FORM-UI",
+        "req_id": "REQ-3.2",
+        "interface_ids": ["UI-REQ-3.2-BOOKING-FORM"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-3.2-booking-form.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.2::E2E::004::REQ-3.2-E2E-BOOKING-SUBMIT",
+        "req_id": "REQ-3.2",
+        "interface_ids": ["UI-REQ-3.2-BOOKING-FORM", "API-BE-BOOKING-ORDERS"],
+        "type": "E2E",
+        "file_path": "backend/test-e2e/req-3.2-booking-submit.e2e.spec.js",
+        "first_line": "const { expect, test } = require('@playwright/test');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-3.2",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-3.2 (design): scaffold booking form, booking-create route, service, repository, and submit tests."
+      }
+    }
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "task": {
+    "node_id": "REQ-3.3",
+    "phase": "design"
+  },
+  "interfaces": [
+    {
+      "interface_id": "UI-REQ-3.3-BOOKING-SUCCESS-PAGE",
+      "req_ids": ["REQ-3.3"],
+      "type": "UI",
+      "content": {
+        "interface_id": "UI-REQ-3.3-BOOKING-SUCCESS-PAGE",
+        "type": "UI",
+        "name": "Booking Success Page",
+        "description": "Displays the success result for a newly created booking record.",
+        "callers": ["UI-REQ-3.2-BOOKING-FORM"],
+        "callees": ["API-BE-BOOKING-RESULT"]
+      },
+      "file_path": "frontend/src/pages/BookingSuccessPage.tsx",
+      "first_line": "export default function BookingSuccessPage() {",
+      "implemented": false,
+      "callers": ["UI-REQ-3.2-BOOKING-FORM"],
+      "callees": ["API-BE-BOOKING-RESULT"]
+    },
+    {
+      "interface_id": "API-BE-BOOKING-RESULT",
+      "req_ids": ["REQ-3.3"],
+      "type": "API",
+      "content": {
+        "interface_id": "API-BE-BOOKING-RESULT",
+        "type": "API",
+        "name": "Booking Result Route",
+        "description": "Accepts GET /api/booking/orders/:bookingId and returns the stored booking result.",
+        "callers": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE"],
+        "callees": ["FUNC-BE-LOAD-BOOKING-RESULT"]
+      },
+      "file_path": "backend/src/routes/booking.js",
+      "first_line": "router.get('/orders/:bookingId', async (req, res, next) => {",
+      "implemented": false,
+      "callers": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE"],
+      "callees": ["FUNC-BE-LOAD-BOOKING-RESULT"]
+    },
+    {
+      "interface_id": "FUNC-BE-LOAD-BOOKING-RESULT",
+      "req_ids": ["REQ-3.3"],
+      "type": "FUNC",
+      "content": {
+        "interface_id": "FUNC-BE-LOAD-BOOKING-RESULT",
+        "type": "FUNC",
+        "name": "Load Booking Result Service",
+        "description": "Loads a stored booking by id for the current user and maps it into a success payload.",
+        "callers": ["API-BE-BOOKING-RESULT"],
+        "callees": ["DB-BE-BOOKING-BY-ID"]
+      },
+      "file_path": "backend/src/services/booking_service.js",
+      "first_line": "async function loadBookingOrder({ userId, bookingId }) {",
+      "implemented": false,
+      "callers": ["API-BE-BOOKING-RESULT"],
+      "callees": ["DB-BE-BOOKING-BY-ID"]
+    },
+    {
+      "interface_id": "DB-BE-BOOKING-BY-ID",
+      "req_ids": ["REQ-3.3"],
+      "type": "DB",
+      "content": {
+        "interface_id": "DB-BE-BOOKING-BY-ID",
+        "type": "DB",
+        "name": "Find Booking By Id Repository",
+        "description": "Loads the stored booking row plus train summary for the current user.",
+        "callers": ["FUNC-BE-LOAD-BOOKING-RESULT"],
+        "callees": []
+      },
+      "file_path": "backend/src/repositories/booking_repository.js",
+      "first_line": "async function getBookingByIdForUser(bookingId, userId) {",
+      "implemented": false,
+      "callers": ["FUNC-BE-LOAD-BOOKING-RESULT"],
+      "callees": []
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "REQ-3.3-UNIT-BOOKING-RESULT-LOOKUP",
+      "req_id": "REQ-3.3",
+      "interface_ids": ["FUNC-BE-LOAD-BOOKING-RESULT"],
+      "type": "Unit",
+      "file_path": "backend/tests/req-3.3-booking-result.unit.test.js",
+      "first_line": "const { describe, expect, it } = require('vitest');"
+    },
+    {
+      "test_id": "REQ-3.3-INTEGRATION-BOOKING-RESULT-API",
+      "req_id": "REQ-3.3",
+      "interface_ids": ["API-BE-BOOKING-RESULT", "FUNC-BE-LOAD-BOOKING-RESULT", "DB-BE-BOOKING-BY-ID"],
+      "type": "Integration",
+      "file_path": "backend/tests/req-3.3-booking-result.integration.test.js",
+      "first_line": "const request = require('supertest');"
+    },
+    {
+      "test_id": "REQ-3.3-INTEGRATION-BOOKING-SUCCESS-UI",
+      "req_id": "REQ-3.3",
+      "interface_ids": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE"],
+      "type": "Integration",
+      "file_path": "frontend/src/test/integration/req-3.3-booking-success.integration.test.tsx",
+      "first_line": "import { render, screen } from '@testing-library/react';"
+    },
+    {
+      "test_id": "REQ-3.3-E2E-BOOKING-SUCCESS",
+      "req_id": "REQ-3.3",
+      "interface_ids": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE", "API-BE-BOOKING-RESULT"],
+      "type": "E2E",
+      "file_path": "backend/test-e2e/req-3.3-booking-success.e2e.spec.js",
+      "first_line": "const { expect, test } = require('@playwright/test');"
+    }
+  ],
+  "sdk_calls": [
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "UI-REQ-3.3-BOOKING-SUCCESS-PAGE",
+        "req_ids": ["REQ-3.3"],
+        "type": "UI",
+        "content": "{\"interface_id\":\"UI-REQ-3.3-BOOKING-SUCCESS-PAGE\",\"type\":\"UI\",\"name\":\"Booking Success Page\",\"description\":\"Displays the success result for a newly created booking record.\",\"callers\":[\"UI-REQ-3.2-BOOKING-FORM\"],\"callees\":[\"API-BE-BOOKING-RESULT\"]}",
+        "file_path": "frontend/src/pages/BookingSuccessPage.tsx",
+        "first_line": "export default function BookingSuccessPage() {",
+        "implemented": false,
+        "callers": ["UI-REQ-3.2-BOOKING-FORM"],
+        "callees": ["API-BE-BOOKING-RESULT"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "API-BE-BOOKING-RESULT",
+        "req_ids": ["REQ-3.3"],
+        "type": "API",
+        "content": "{\"interface_id\":\"API-BE-BOOKING-RESULT\",\"type\":\"API\",\"name\":\"Booking Result Route\",\"description\":\"Accepts GET /api/booking/orders/:bookingId and returns the stored booking result.\",\"callers\":[\"UI-REQ-3.3-BOOKING-SUCCESS-PAGE\"],\"callees\":[\"FUNC-BE-LOAD-BOOKING-RESULT\"]}",
+        "file_path": "backend/src/routes/booking.js",
+        "first_line": "router.get('/orders/:bookingId', async (req, res, next) => {",
+        "implemented": false,
+        "callers": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE"],
+        "callees": ["FUNC-BE-LOAD-BOOKING-RESULT"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "FUNC-BE-LOAD-BOOKING-RESULT",
+        "req_ids": ["REQ-3.3"],
+        "type": "FUNC",
+        "content": "{\"interface_id\":\"FUNC-BE-LOAD-BOOKING-RESULT\",\"type\":\"FUNC\",\"name\":\"Load Booking Result Service\",\"description\":\"Loads a stored booking by id for the current user and maps it into a success payload.\",\"callers\":[\"API-BE-BOOKING-RESULT\"],\"callees\":[\"DB-BE-BOOKING-BY-ID\"]}",
+        "file_path": "backend/src/services/booking_service.js",
+        "first_line": "async function loadBookingOrder({ userId, bookingId }) {",
+        "implemented": false,
+        "callers": ["API-BE-BOOKING-RESULT"],
+        "callees": ["DB-BE-BOOKING-BY-ID"]
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_interface",
+      "params": {
+        "interface_id": "DB-BE-BOOKING-BY-ID",
+        "req_ids": ["REQ-3.3"],
+        "type": "DB",
+        "content": "{\"interface_id\":\"DB-BE-BOOKING-BY-ID\",\"type\":\"DB\",\"name\":\"Find Booking By Id Repository\",\"description\":\"Loads the stored booking row plus train summary for the current user.\",\"callers\":[\"FUNC-BE-LOAD-BOOKING-RESULT\"],\"callees\":[]}",
+        "file_path": "backend/src/repositories/booking_repository.js",
+        "first_line": "async function getBookingByIdForUser(bookingId, userId) {",
+        "implemented": false,
+        "callers": ["FUNC-BE-LOAD-BOOKING-RESULT"],
+        "callees": []
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.3::Unit::001::REQ-3.3-UNIT-BOOKING-RESULT-LOOKUP",
+        "req_id": "REQ-3.3",
+        "interface_ids": ["FUNC-BE-LOAD-BOOKING-RESULT"],
+        "type": "Unit",
+        "file_path": "backend/tests/req-3.3-booking-result.unit.test.js",
+        "first_line": "const { describe, expect, it } = require('vitest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.3::Integration::002::REQ-3.3-INTEGRATION-BOOKING-RESULT-API",
+        "req_id": "REQ-3.3",
+        "interface_ids": ["API-BE-BOOKING-RESULT", "FUNC-BE-LOAD-BOOKING-RESULT", "DB-BE-BOOKING-BY-ID"],
+        "type": "Integration",
+        "file_path": "backend/tests/req-3.3-booking-result.integration.test.js",
+        "first_line": "const request = require('supertest');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.3::Integration::003::REQ-3.3-INTEGRATION-BOOKING-SUCCESS-UI",
+        "req_id": "REQ-3.3",
+        "interface_ids": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE"],
+        "type": "Integration",
+        "file_path": "frontend/src/test/integration/req-3.3-booking-success.integration.test.tsx",
+        "first_line": "import { render, screen } from '@testing-library/react';",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_test",
+      "params": {
+        "test_id": "REQ-3.3::E2E::004::REQ-3.3-E2E-BOOKING-SUCCESS",
+        "req_id": "REQ-3.3",
+        "interface_ids": ["UI-REQ-3.3-BOOKING-SUCCESS-PAGE", "API-BE-BOOKING-RESULT"],
+        "type": "E2E",
+        "file_path": "backend/test-e2e/req-3.3-booking-success.e2e.spec.js",
+        "first_line": "const { expect, test } = require('@playwright/test');",
+        "passed": null
+      }
+    },
+    {
+      "sdk": "runtime.traceability.upsert_node_state",
+      "params": {
+        "req_id": "REQ-3.3",
+        "state": "DESIGNED"
+      }
+    },
+    {
+      "sdk": "runtime.git.commit",
+      "params": {
+        "message": "REQ-3.3 (design): scaffold booking success page, result route, lookup service, repository, and tests."
+      }
+    }
+  ]
+}
