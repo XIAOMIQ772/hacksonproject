@@ -13,3 +13,4 @@ local-runs/
 reference/
 tasks/benchmark-bundle/
 tasks/catalog-benchmark/
+/run-local-model.sh
