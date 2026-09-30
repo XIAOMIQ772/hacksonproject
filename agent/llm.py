@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
+from openai import APIStatusError, OpenAI
 
 
 class FatalModelError(RuntimeError):
@@ -96,6 +96,8 @@ EFFORTS = ("low", "medium", "high")
 # Transient failures (connection errors, timeouts, 5xx, rate limits) are retried for this long before the run
 # gives up and delivers its current state; credential and quota errors stop immediately.
 RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
+# Replies are streamed; a connection that delivers nothing for this long is dropped and the request retried.
+IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "90"))
 
 
 class LLM:
@@ -103,7 +105,8 @@ class LLM:
                  max_tokens: int = int(os.environ.get("AGENT_MAX_TOKENS", "16384"))):
         self.model = model or os.environ.get("MODEL") or "glm-5.3-flash"
         self.client = OpenAI(api_key=api_key or os.environ.get("OPENAI_API_KEY"),
-                             base_url=base_url or os.environ.get("OPENAI_BASE_URL"), timeout=600, max_retries=0)
+                             base_url=base_url or os.environ.get("OPENAI_BASE_URL"),
+                             timeout=IDLE_SECONDS, max_retries=0)
         self.max_tokens = max_tokens
         self.vision = supports_vision(self.model)
         self.usage = Usage()
@@ -128,11 +131,12 @@ class LLM:
             request["extra_body"] = {"thinking": {"type": "enabled"}}
             if self.effort:  # ignored by endpoints without the control
                 request["extra_body"]["reasoning_effort"] = self.effort
+        request.update(stream=True, stream_options={"include_usage": True})
         started = time.time()
         attempt = 0
         while True:
             try:
-                response = self.client.chat.completions.create(**request)
+                message, finish, usage = self._receive(self.client.chat.completions.create(**request))
                 break
             except APIStatusError as error:
                 body = str(error.body or error.message).lower()
@@ -142,7 +146,9 @@ class LLM:
                 if error.status_code < 500 and error.status_code != 429 and "proxy" not in body:
                     raise FatalModelError(str(error)) from error
                 retry = error
-            except (APIConnectionError, APITimeoutError) as error:
+            except (AttributeError, KeyError, NameError, TypeError):  # a bug here, not a network problem
+                raise
+            except Exception as error:  # connection reset, idle timeout or a broken stream: send the request again
                 retry = error
             if time.time() - started > RETRY_SECONDS:  # an outage, not a network hiccup
                 raise FatalModelError(f"model unavailable for {RETRY_SECONDS}s: {retry}")
@@ -150,15 +156,40 @@ class LLM:
             attempt += 1
             print(f"[llm] {type(retry).__name__}: {str(retry)[:200]}; retry in {wait}s", flush=True)
             time.sleep(wait)
-        record = self.usage.add(response.usage)
+        record = self.usage.add(usage)
         if USAGE_LOG and record:
             record.update(time=round(started, 1), seconds=round(time.time() - started, 1), model=self.model,
-                          label=self.label, effort=self.effort, retries=attempt,
-                          finish=response.choices[0].finish_reason or "")
+                          label=self.label, effort=self.effort, retries=attempt, finish=finish)
             with _log_lock, USAGE_LOG.open("a") as log:
                 log.write(json.dumps(record) + "\n")
-        choice = response.choices[0]
-        message = choice.message.model_dump(exclude_none=True)
         calls = [{"id": c["id"], "name": c["function"]["name"], "arguments": c["function"]["arguments"]}
                  for c in message.get("tool_calls") or []]
-        return Reply(message, calls, message.get("content") or "", choice.finish_reason or "")
+        return Reply(message, calls, message.get("content") or "", finish)
+
+    @staticmethod
+    def _receive(stream) -> tuple[dict, str, object]:
+        """Assemble a streamed reply into (assistant message, finish reason, usage)."""
+        content, reasoning, calls, finish, usage = [], [], {}, "", None
+        for chunk in stream:
+            usage = getattr(chunk, "usage", None) or usage
+            for choice in chunk.choices or []:
+                delta = choice.delta
+                finish = choice.finish_reason or finish
+                if delta.content:
+                    content.append(delta.content)
+                thought = getattr(delta, "reasoning_content", None) or (delta.model_extra or {}).get("reasoning_content")
+                if thought:
+                    reasoning.append(thought)
+                for part in delta.tool_calls or []:
+                    call = calls.setdefault(part.index, {"id": "", "type": "function",
+                                                         "function": {"name": "", "arguments": ""}})
+                    call["id"] = part.id or call["id"]
+                    if part.function:
+                        call["function"]["name"] += part.function.name or ""
+                        call["function"]["arguments"] += part.function.arguments or ""
+        message: dict = {"role": "assistant", "content": "".join(content)}
+        if reasoning:
+            message["reasoning_content"] = "".join(reasoning)
+        if calls:
+            message["tool_calls"] = [calls[i] for i in sorted(calls)]
+        return message, finish, usage

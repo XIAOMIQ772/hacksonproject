@@ -381,6 +381,30 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(checks.failed_tests(report), {"a.spec.ts :: breaks"})
 
 
+class StreamTest(unittest.TestCase):
+    def test_stream_is_assembled_into_a_replayable_message(self):
+        from types import SimpleNamespace as N
+        import llm
+
+        def chunk(delta=None, finish=None, usage=None):
+            fields = {"content": None, "tool_calls": None, "model_extra": {}, **(delta or {})}
+            choices = [N(delta=N(**fields), finish_reason=finish)] if delta is not None or finish else []
+            return N(choices=choices, usage=usage)
+        call = lambda i, id=None, name=None, args=None: N(index=i, id=id, function=N(name=name, arguments=args))
+        stream = [chunk({"reasoning_content": "think "}), chunk({"reasoning_content": "more"}),
+                  chunk({"content": "ok"}),
+                  chunk({"tool_calls": [call(0, "c1", "read", '{"pa')]}), chunk({"tool_calls": [call(0, args='th": 1}')]}),
+                  chunk({"tool_calls": [call(1, "c2", "bash", "{}")]}), chunk(finish="tool_calls"),
+                  chunk(usage=N(prompt_tokens=5, completion_tokens=3))]
+        message, finish, usage = llm.LLM._receive(stream)
+        self.assertEqual(message["reasoning_content"], "think more")
+        self.assertEqual(message["content"], "ok")
+        self.assertEqual([c["function"]["arguments"] for c in message["tool_calls"]], ['{"path": 1}', "{}"])
+        self.assertEqual(message["tool_calls"][0]["id"], "c1")
+        self.assertEqual(finish, "tool_calls")
+        self.assertEqual(usage.prompt_tokens, 5)
+
+
 class DagTest(unittest.TestCase):
     def test_parse_reports_coverage_and_cycles(self):
         import dag
