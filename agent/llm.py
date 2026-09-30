@@ -93,6 +93,9 @@ def supports_vision(model: str) -> bool:
 
 REASONING_EFFORT = os.environ.get("AGENT_REASONING_EFFORT", "low")  # starting level; the agent may change it
 EFFORTS = ("low", "medium", "high")
+# Transient failures (connection errors, timeouts, 5xx, rate limits) are retried for this long before the run
+# gives up and delivers its current state; credential and quota errors stop immediately.
+RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
 
 
 class LLM:
@@ -126,7 +129,8 @@ class LLM:
             if self.effort:  # ignored by endpoints without the control
                 request["extra_body"]["reasoning_effort"] = self.effort
         started = time.time()
-        for attempt in range(6):
+        attempt = 0
+        while True:
             try:
                 response = self.client.chat.completions.create(**request)
                 break
@@ -140,11 +144,12 @@ class LLM:
                 retry = error
             except (APIConnectionError, APITimeoutError) as error:
                 retry = error
+            if time.time() - started > RETRY_SECONDS:  # an outage, not a network hiccup
+                raise FatalModelError(f"model unavailable for {RETRY_SECONDS}s: {retry}")
             wait = min(60, 5 * 2 ** attempt)
+            attempt += 1
             print(f"[llm] {type(retry).__name__}: {str(retry)[:200]}; retry in {wait}s", flush=True)
             time.sleep(wait)
-        else:
-            raise FatalModelError(f"model unavailable after retries: {retry}")
         record = self.usage.add(response.usage)
         if USAGE_LOG and record:
             record.update(time=round(started, 1), seconds=round(time.time() - started, 1), model=self.model,

@@ -69,11 +69,11 @@ class ToolsTest(unittest.TestCase):
 
 
 class StaticTest(unittest.TestCase):
-    def test_native_popups_flagged_unless_required(self):
+    def test_browser_dialogs_flagged_native_select_allowed(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp, "frontend", "src")
             src.mkdir(parents=True)
-            (src / "A.tsx").write_text('<select id="a">\n<select id="b"> {/* required by REQ-6-1 */}\nconfirm("x")\n')
+            (src / "A.tsx").write_text('<select id="a">\nconfirm("x")\nwindow.alert("y")\n')
             found = checks.static(Path(tmp))
         self.assertEqual(len(found), 2)
 

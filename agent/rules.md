@@ -1,6 +1,13 @@
 # Engineering rules for the generated web app
 
-Treat the requirements as a contract verified by end-to-end browser tests that find controls by ARIA role and accessible name, operate them with clicks, typing, keys, clipboard, drag and file upload, and reload the page to check persistence. The requirement text wins over these rules whenever they conflict.
+Treat the requirements as a contract verified by end-to-end browser tests. The requirement text wins over these rules whenever they conflict.
+
+## How the app is evaluated
+- The evaluator installs and builds the delivered `frontend/` and `backend/` and starts the backend, which serves the API and the built frontend on one port. Nothing runs that the delivery does not include.
+- Hidden Playwright tests drive the app only through the browser UI. Each test starts in a fresh, unauthenticated browser context at the home page, finds elements by ARIA role, accessible name, label or visible text, operates them with clicks, typing, keys, clipboard and file upload, and reloads or reopens pages to check that results persisted.
+- Playwright locators are strict: a locator that matches two elements fails the test, and one that matches nothing fails after a timeout. Browser dialogs (`alert`, `confirm`, `prompt`) are dismissed automatically, so `confirm()` returns false.
+- Tests share one running server and database: records created by earlier tests remain, and tests create their own objects, often with a unique suffix in the name.
+- Scenario steps in the requirements are generated from templates and can be garbled; the requirement description is the acceptance rule.
 
 ## Reading requirements
 1. Each atomic requirement's description is the acceptance rule. Scenario steps may be templated placeholders; use them only for seed values and flow.
@@ -19,12 +26,12 @@ Treat the requirements as a contract verified by end-to-end browser tests that f
 ## Components
 11. Simple controls are native elements: button, a, input (text/checkbox/radio/file), textarea.
 12. Composite controls are implemented in the page DOM following WAI-ARIA Authoring Practices, as small shared components reused everywhere:
-    - Combobox (any "combo box", "dropdown", "select" choice): a `role="combobox"` trigger labelled by its `<label>`, with `aria-expanded` and `aria-controls`; clicking it shows a visible `role="listbox"` (no label of its own) whose items are clickable `role="option"` elements named exactly as the option text; clicking an option selects it and closes the list; the trigger shows the selected text.
+    - Combobox (a "combo box" or "dropdown" choice): a `role="combobox"` trigger labelled by its `<label>`, with `aria-expanded` and `aria-controls`; clicking it shows a visible `role="listbox"` (no label of its own) whose items are clickable `role="option"` elements named exactly as the option text; clicking an option selects it and closes the list; the trigger shows the selected text.
     - Menu: trigger button with `aria-haspopup="menu"` and `aria-expanded`; a `role="menu"` with `role="menuitem"` buttons.
     - Dialog: `role="dialog"` with `aria-labelledby` pointing at its heading; focus moves inside when opened.
     - Tabs: `role="tablist"` containing `role="tab"` elements, active one `aria-selected="true"`.
     - Editable grid: `role="grid"`, rows `role="row"`, cells `role="gridcell"` named by `aria-label` when the requirement defines cell names.
-13. Never use native `<select>`, native date/color pickers, or `alert`/`confirm`/`prompt`, unless the requirement explicitly demands that element; then add the comment `required by REQ-x` on that line.
+13. Use a native `<select>` (or a native date or color input) only where the requirement asks for that native element; a "combo box", "dropdown" or choice whose items have the option role is the ARIA combobox above. Never use `alert`, `confirm` or `prompt`; show messages and confirmations in the page.
 14. When a feature has several entry points (context menu, tab menu, toolbar), every entry point works, and anything reachable by right-click is also reachable through a visible named button.
 
 ## Interaction
@@ -32,11 +39,11 @@ Treat the requirements as a contract verified by end-to-end browser tests that f
 16. Text entry: Enter commits, Escape cancels and restores, blur commits.
 17. Handle real `copy`/`cut`/`paste` events with the system clipboard as plain text (tab-separated columns, newline-separated rows). Cut then paste moves: the source is cleared after a successful paste.
 18. File upload uses a labelled `<input type="file">`; downloads use a Blob and an `<a download="name.ext">`.
-19. No transitions, animations, skeletons or deferred rendering. With React Router 7 set `unstable_useTransitions={false}` on the router so a navigation replaces the page immediately.
+19. No transitions, animations, skeletons or deferred rendering; keep the router setting in `frontend/src/main.tsx` that commits navigations immediately.
 
 ## Data
 20. All data lives in the backend database. UI state the requirements ask to keep (active tab, selection, filters, sort) is saved on the server too.
-21. Persist every change immediately when the action completes; no debounce, no save-on-unload. Send writes with `fetch(..., { keepalive: true })`; the server applies writes in arrival order, so a reload right after an action shows the new state.
+21. Persist every change immediately when the action completes; no debounce, no save-on-unload. Send writes with `fetch(..., { keepalive: true })` so a reload does not cancel them, and keep the template's API queue in `backend/src/app.js`, which handles requests in arrival order; a reload right after an action then shows the new state.
 22. Every object has a stable URL; opening it directly in a new browser session shows its latest state; reload restores the last saved state.
 23. Names and values are arbitrary strings of any length; never infer behaviour from their shape. The database accumulates records from many sessions: new or changed objects are immediately visible in their lists (no hiding by pagination or caps). Landing and list pages show every object the signed-in user can access (owned, shared directly, via a team or an organization), each linked by its name, so any accessible object is reachable from the home page by clicking.
 24. Undo/redo history is kept per object.

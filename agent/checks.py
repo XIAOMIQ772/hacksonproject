@@ -14,11 +14,9 @@ from pathlib import Path
 
 from tools import clip, kill_group, shell
 
-# Browser-native popups cannot be driven like page content (standard §3.3).
+# Browser dialogs are dismissed automatically by the test browser (rule 13).
 STATIC_RULES = [
-    (re.compile(r"<select\b"), "native <select>: use the shared ARIA Combobox component"),
     (re.compile(r"\b(?:window\.)?(?:alert|confirm|prompt)\s*\("), "alert/confirm/prompt: use an in-page dialog"),
-    (re.compile(r'type=["\'](?:date|color|datetime-local)["\']'), "native date/color input: use a text input"),
 ]
 
 
@@ -193,6 +191,6 @@ def check(root: Path, pattern: str = "") -> tuple[bool, str]:
             lines.append("FAILED TESTS:\n" + "\n".join(f"- {name}" for name in names[:300]))
         lines.append("E2E FAILURES:\n" + clip(failures, 9000))
     if violations:
-        lines.append("RULE VIOLATIONS (standard §3.3):\n" + "\n".join(violations[:30]))
+        lines.append("RULE VIOLATIONS (rule 13):\n" + "\n".join(violations[:30]))
     ok = total > 0 and passed == total and not violations
     return ok, "\n".join(lines)

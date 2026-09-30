@@ -45,8 +45,8 @@ exact names from the requirements, act by click/fill/press/paste/setInputFiles, 
 assert that results persist. Tests run in parallel against one shared server and database: each test \
 creates its own objects through the UI with unique names and enters the data it needs; tests may read \
 seeded records but never modify them.
-- Operate controls the way a user does: open a combobox by clicking it and click the `option` by role \
-and name (never `selectOption`); open menus by clicking their button.
+- Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
+and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
 - Pass `{{ exact: true }}` for short or numeric names ('3', 'A1', 'Save') so they do not also match '13', \
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \
