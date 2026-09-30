@@ -54,6 +54,13 @@ function runStatement(database, sql) {
   });
 }
 
+// sqlite3's run() executes only the first statement of a string; exec() runs them all.
+function execStatements(database, sql) {
+  return new Promise((resolve, reject) => {
+    database.exec(sql, (err) => (err ? reject(err) : resolve()));
+  });
+}
+
 async function initializeDatabase(options = {}) {
   if (options.dbPath) {
     await setDbPath(options.dbPath);
@@ -75,7 +82,9 @@ async function initializeDatabase(options = {}) {
      * 2. When adding fields, use ALTER TABLE ... ADD COLUMN ... and guard it with existence checks or tolerant error handling.
      * 3. Keep schema evolution idempotent and centralized in this file.
      * 4. Reuse `db_runtime.js` for CRUD helpers and `test_harness.js` for test DB lifecycle instead of re-implementing one-off connection logic elsewhere.
+     * 5. runStatement executes a single statement; use execStatements for multi-statement DDL.
      */
+    return database;
   })();
 
   try {
@@ -129,6 +138,7 @@ module.exports = {
   setDbPath,
   getDb,
   initializeDatabase,
+  execStatements,
   closeDb,
   removeDatabaseFile,
   resetDatabaseFile,

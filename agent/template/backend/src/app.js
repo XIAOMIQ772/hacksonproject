@@ -11,11 +11,10 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// initialize database
+// Startup work. index.js starts listening only after app.ready resolves, so chain every startup step
+// (schema, seed data) onto this promise instead of starting it in the background.
 const { initializeDatabase } = require('./database/init_db');
-initializeDatabase().catch((error) => {
-  console.error('Database initialization failed:', error);
-});
+app.ready = initializeDatabase();
 
 // register routes
 app.get('/api/health', (req, res) => {

@@ -7,6 +7,7 @@ module.exports = defineConfig({
   testMatch: /.*\.spec\.(js|jsx|ts|tsx)$/,
   timeout: 30000,
   use: {
+    permissions: ['clipboard-read', 'clipboard-write'],
     baseURL,
     trace: 'retain-on-failure',
   },
