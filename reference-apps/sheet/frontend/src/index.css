@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* REQ-5-1-2: rows hidden by a filter stay in the grid (cells keep their values, names and selection
+   state) but take no space and render nothing. */
+tr[data-filtered] > * {
+  height: 0;
+  padding: 0;
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+  line-height: 0;
+}
+tr[data-filtered] > * > * {
+  display: none;
+}

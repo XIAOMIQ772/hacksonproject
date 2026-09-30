@@ -1,0 +1,7 @@
+node_modules
+*.db
+.arc-test-db
+.env
+coverage
+test-results
+playwright-report
