@@ -11,6 +11,21 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// API requests are handled one at a time in arrival order, so a write sent just before a page reload is
+// stored before the reload's reads run. A request whose client already disconnected is skipped.
+let apiQueue = Promise.resolve();
+app.use('/api', (req, res, next) => {
+  apiQueue = apiQueue.then(() => new Promise((resolve) => {
+    if (res.closed || req.destroyed) {
+      resolve();
+      return;
+    }
+    res.on('finish', resolve);
+    res.on('close', resolve);
+    next();
+  }));
+});
+
 // Startup work. index.js starts listening only after app.ready resolves, so chain every startup step
 // (schema, seed data) onto this promise instead of starting it in the background.
 const { initializeDatabase } = require('./database/init_db');
