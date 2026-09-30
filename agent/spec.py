@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 QUOTED = re.compile(r'"([^"\n]{1,80})"')
+IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
 
 
 @dataclass
@@ -78,20 +79,51 @@ def _scenarios(atomic: Node) -> str:
     return "\n".join(parts)
 
 
-def card(atomic: Node) -> str:
+def images(text: str) -> list[str]:
+    return list(dict.fromkeys(IMAGE.findall(text)))
+
+
+def card(atomic: Node, base: str = "") -> str:
     names = quoted_names(atomic.description)
     lines = [f"### {atomic.id} {atomic.name}", atomic.description]
+    pictures = images(atomic.description)
+    if pictures:
+        lines.append("Reference images (read them to see the intended layout; names in the text win): "
+                     + ", ".join(f"{base}/{p}" if base else p for p in pictures))
     if names:
         lines.append("Exact UI strings (accessible names / messages): " + "; ".join(f'"{n}"' for n in names))
-    lines.append(f"Hidden acceptance tests for this requirement: {len(atomic.scenarios)}")
+    lines.append(f"Acceptance scenarios: {len(atomic.scenarios)}")
     if atomic.scenarios:
         lines.append(_scenarios(atomic))
     return "\n".join(lines)
 
 
-def group_card(group: Node) -> str:
+def group_card(group: Node, base: str = "") -> str:
     head = f"## {group.id} {group.name}\n{group.description}".strip()
-    return head + "\n\n" + "\n\n".join(card(a) for a in group.atomics)
+    pictures = images(group.description)
+    if pictures:
+        head += "\nReference images: " + ", ".join(f"{base}/{p}" if base else p for p in pictures)
+    return head + "\n\n" + "\n\n".join(card(a, base) for a in group.atomics)
+
+
+def shared(root: Node, atomic_ids: list[str] | None = None) -> str:
+    """Descriptions of the groups containing the given atomic requirements (all groups when None).
+
+    Group descriptions state rules that hold for every requirement below them (accessible names of shared
+    UI, persistence, validation), so every session working on those requirements must see them."""
+    wanted = set(atomic_ids) if atomic_ids is not None else None
+    out: list[str] = []
+
+    def walk(node: Node) -> bool:
+        if node.type == "ATOMIC":
+            return wanted is None or node.id in wanted
+        hit = any([walk(c) for c in node.children])
+        if hit and node.description:
+            out.append(f"### {node.id} {node.name}\n{node.description}")
+        return hit
+
+    walk(root)
+    return "\n\n".join(reversed(out))
 
 
 def outline(root: Node) -> str:
@@ -104,7 +136,28 @@ def outline(root: Node) -> str:
                 lines.append(f"{'  ' * depth}- {child.id} {child.name} ({len(child.scenarios)} tests)")
             else:
                 lines.append(f"{'  ' * depth}- {child.id} {child.name}")
+                if child.description:  # group-level rules apply to every requirement below them
+                    lines.append(f"{'  ' * (depth + 1)}{' '.join(child.description.split())}")
                 walk(child, depth + 1)
 
     walk(root, 0)
     return "\n".join(lines)
+
+
+SEED = re.compile(r"(?:The evaluation seed contains|The seeded data is|Seed values:)\s*(.+?)(?:\.\s|$)", re.S)
+
+
+def seed_facts(root: Node) -> str:
+    """Distinct seed statements from scenario preconditions, with the requirements that use them."""
+    facts: dict[str, list[str]] = {}
+    for atomic in root.atomics:
+        for scenario in atomic.scenarios:
+            for step in scenario.get("steps") or []:
+                if step.get("keyword") != "GIVEN":
+                    continue
+                for match in SEED.findall(step.get("content", "")):
+                    text = " ".join(match.split()).rstrip(".")
+                    ids = facts.setdefault(text, [])
+                    if atomic.id not in ids:
+                        ids.append(atomic.id)
+    return "\n".join(f"- {text} (used by {', '.join(ids)})" for text, ids in facts.items())

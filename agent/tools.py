@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shlex
 import signal
 import subprocess
 from pathlib import Path
@@ -22,6 +24,14 @@ SCHEMAS = [
      "parameters": {"type": "object", "properties": {
          "path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}},
          "required": ["path", "old_text", "new_text"]}},
+    {"name": "apply", "description": "Make several file changes in one call: each change either writes a "
+     "whole file (path, content) or replaces one exact, unique occurrence (path, old_text, new_text). All "
+     "changes are checked first and nothing is written if any of them fails; changes to the same file apply "
+     "in order.",
+     "parameters": {"type": "object", "properties": {"changes": {"type": "array", "items": {
+         "type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"},
+                                          "old_text": {"type": "string"}, "new_text": {"type": "string"}},
+         "required": ["path"]}}}, "required": ["changes"]}},
     {"name": "bash", "description": "Run a shell command in the workspace root (no interactive or "
      "long-running servers; they are killed at the timeout).",
      "parameters": {"type": "object", "properties": {
@@ -38,12 +48,19 @@ def clip(text: str, limit: int = OUTPUT_LIMIT) -> str:
 
 
 class Tools:
-    def __init__(self, root: Path, readable: list[Path] | None = None):
+    def __init__(self, root: Path, readable: list[Path] | None = None, read_only: bool = False):
         self.root = root.resolve()
         self.readable = [self.root, *[p.resolve() for p in readable or []]]
+        self.read_only = read_only  # reviewers: only read and read-only shell commands
+
+    @property
+    def schemas(self) -> list[dict]:
+        return [s for s in SCHEMAS if not self.read_only or s["name"] in ("read", "bash")]
 
     def _path(self, path: str, *, write: bool) -> Path:
         target = (self.root / path).resolve()
+        if not write and not target.exists():  # relative links in the requirements point into their directory
+            target = next((found for base in self.readable[1:] if (found := (base / path).resolve()).exists()), target)
         allowed = [self.root] if write else self.readable
         if not any(target == base or base in target.parents for base in allowed):
             raise ValueError(f"path outside the workspace: {path}")
@@ -54,6 +71,10 @@ class Tools:
     def run(self, name: str, arguments: str) -> str:
         try:
             args = json.loads(arguments or "{}")
+            if self.read_only and (name not in ("read", "bash")
+                                   or (name == "bash" and not is_read_only(args.get("command", "")))):
+                return ("ERROR: this session is read-only; use read and read-only shell commands (git diff/show/"
+                        "log, grep, ls, cat, sed -n) without redirection")
             return getattr(self, f"_{name}")(**args)
         except Exception as error:  # the model sees every tool failure and decides what to do
             return f"ERROR: {type(error).__name__}: {error}"
@@ -82,8 +103,72 @@ class Tools:
         target.write_text(text.replace(old_text, new_text))
         return f"edited {path}"
 
+    def _apply(self, changes: list[dict]) -> str:
+        pending: dict[Path, str] = {}  # final text per file, built in memory before anything is written
+        for number, change in enumerate(changes, 1):
+            path = str(change.get("path", ""))
+            target = self._path(path, write=True)
+            if "content" in change:
+                pending[target] = str(change["content"])
+                continue
+            if "old_text" not in change or "new_text" not in change:
+                return f"ERROR: change {number} ({path}) needs content, or old_text and new_text; nothing written"
+            if target not in pending and not target.is_file():
+                return f"ERROR: change {number}: {path} does not exist; nothing written"
+            text = pending.get(target, target.read_text() if target.is_file() else "")
+            count = text.count(change["old_text"])
+            if count != 1:
+                return (f"ERROR: change {number}: old_text found {count} times in {path}; it must match exactly "
+                        "once; nothing written")
+            pending[target] = text.replace(change["old_text"], change["new_text"])
+        for target, text in pending.items():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            tmp = target.with_name(target.name + ".tmp")
+            tmp.write_text(text)
+            tmp.replace(target)
+        return "applied: " + ", ".join(str(t.relative_to(self.root)) for t in pending)
+
     def _bash(self, command: str, timeout: int = 180) -> str:
         return shell(command, self.root, min(max(timeout, 1), 600))
+
+
+READ_ONLY = {"cat", "ls", "grep", "rg", "egrep", "head", "tail", "wc", "find", "sed", "awk", "sort", "uniq",
+             "cut", "tr", "echo", "printf", "pwd", "tree", "stat", "file", "diff", "jq", "nl", "basename",
+             "dirname", "realpath", "true", "cd", "git"}
+READ_ONLY_GIT = {"diff", "log", "show", "status", "grep", "ls-files", "rev-parse", "blame", "branch"}
+UNSAFE = re.compile(r"(?<![0-9&])>(?!&)|>>|`|\$\(|\s-exec\b|\s-execdir\b|\s-delete\b|\s-fprint|\btee\b"
+                    r"|\bsystem\s*\(|\s-i\b|--in-place|\s--output\b")
+
+
+def is_read_only(command: str) -> bool:
+    """True for commands made only of known read-only programs, without output redirection or substitution.
+
+    Such commands may run concurrently with other read-only calls; anything unrecognised runs in order."""
+    text = re.sub(r"\s[12]?>\s*/dev/null|\s2>&1", " ", command)
+    if not text.strip() or UNSAFE.search(text):
+        return False
+    for segment in re.split(r"&&|\|\||;|\||\n", text):
+        try:
+            words = shlex.split(segment)
+        except ValueError:
+            return False
+        if not words:
+            continue
+        if words[0] not in READ_ONLY:
+            return False
+        if words[0] == "sort" and any(w.startswith("-o") or w.startswith("--output") for w in words[1:]):
+            return False
+        if words[0] == "git" and (len(words) < 2 or words[1] not in READ_ONLY_GIT
+                                  or (words[1] == "branch" and len(words) > 2)):
+            return False
+    return True
+
+
+def kill_group(pid: int) -> None:
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):  # group already gone (macOS reports EPERM)
+        pass
 
 
 def shell(command: str, cwd: Path, timeout: int, env: dict | None = None) -> str:
@@ -96,12 +181,9 @@ def shell(command: str, cwd: Path, timeout: int, env: dict | None = None) -> str
         out, _ = proc.communicate(timeout=timeout)
         status = f"exit {proc.returncode}"
     except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
+        kill_group(proc.pid)
         out, _ = proc.communicate()
         status = f"killed after {timeout}s timeout"
     finally:
-        try:
-            os.killpg(proc.pid, signal.SIGKILL)  # background children started by the command
-        except ProcessLookupError:
-            pass
+        kill_group(proc.pid)  # background children started by the command
     return clip(f"{out or ''}\n[{status}]")

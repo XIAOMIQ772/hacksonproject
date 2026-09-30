@@ -1,36 +1,37 @@
-"""Context compaction modelled on pi: summarize the old part of a session, keep recent turns verbatim.
+"""Context compaction modelled on Codex: the session writes its own handover summary, then its history is
+replaced by [fresh task, summary, recent turns].
 
-History stays append-only between compactions so the provider's prompt cache keeps hitting; a
-compaction rewrites the prefix once: [task, summary, recent turns...].
+The summary request is the current conversation plus one instruction, so the provider's prompt cache
+covers almost all of it and nothing is truncated. Between compactions history stays append-only.
 """
 from __future__ import annotations
 
 import json
 import os
+from typing import Callable
 
-from llm import LLM
+from llm import LLM, FatalModelError
 
-TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "60000"))
-KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "16000"))
-TOOL_RESULT_CHARS = 2000
-SUMMARY_TAG = "[Summary of earlier work in this task]"
+TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "600000"))
+KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "40000"))
+SUMMARY_TAG = "[Handover summary: an earlier part of this session was compacted]"
 
-SUMMARY_SYSTEM = """You write a handover summary of a coding session so another engineer can continue it \
-without the original transcript. Be specific: file paths, function and component names, commands, \
-error messages, exact UI strings. Use these sections:
+SUMMARY_REQUEST = """CONTEXT CHECKPOINT. Your earlier messages will be removed from the conversation and \
+replaced by the summary you write now; another instance of you continues from it. Do not call tools; \
+answer with the summary only. The continuation also receives the task again with a fresh code map and the \
+current content of the files the task owns, the latest check report and any unaddressed reviewer \
+feedback, so do not copy those. Write:
 
-## Goal
-## Constraints & Preferences
-## Progress
-### Done
-### In Progress
-### Blocked
-## Key Decisions
-## Next Steps
-## Critical Context
-
-If a previous summary is given, merge it: keep what is still true, update progress, drop what is obsolete."""
-
+## Requirement checklist
+Each requirement or scenario of the task: done and passing / implemented but failing (why) / not started.
+## Decisions
+Design choices made and the reasons, including approaches tried and abandoned.
+## Current problem
+What is being worked on right now, the evidence (failing test, error text) and the current hypothesis.
+## Next steps
+Concrete, in order.
+## Critical details
+Exact UI strings, file paths, function names, commands and facts learned that are not visible in the code."""
 
 IMAGE_TOKENS = 1500  # providers bill a screenshot at a few hundred to ~1.5k tokens, not its base64 size
 
@@ -60,68 +61,39 @@ def cut_index(messages: list[dict], keep_tokens: int) -> int:
     return cut
 
 
-def serialize(messages: list[dict]) -> str:
-    parts = []
-    for m in messages:
-        if m["role"] == "user":
-            content = m["content"]
-            if isinstance(content, list):  # text + image parts
-                content = " ".join(p.get("text", "[image]") for p in content)
-            parts.append(f"[User]: {content}")
-        elif m["role"] == "assistant":
-            if m.get("reasoning_content"):
-                parts.append(f"[Assistant thinking]: {m['reasoning_content'][:1500]}")
-            if m.get("content"):
-                parts.append(f"[Assistant]: {m['content']}")
-            for call in m.get("tool_calls") or []:
-                parts.append(f"[Assistant tool call]: {call['function']['name']} {call['function']['arguments'][:1500]}")
-        elif m["role"] == "tool":
-            text = m["content"]
-            if len(text) > TOOL_RESULT_CHARS:
-                text = text[:TOOL_RESULT_CHARS] + f"\n[... {len(text) - TOOL_RESULT_CHARS} chars truncated]"
-            parts.append(f"[Tool result]: {text}")
-    return "\n\n".join(parts)
+def summarize(llm: LLM, system: str, tools: list[dict], messages: list[dict]) -> str:
+    """The session's own summary of `messages`. If the request itself is too long for the model, the oldest
+    turns after the task are dropped first, which keeps the cached prefix as long as possible."""
+    history = list(messages)
+    for _ in range(4):
+        try:
+            reply = llm.chat(system, [*history, {"role": "user", "content": SUMMARY_REQUEST}], tools,
+                             tool_choice="none")
+            return reply.text.strip()
+        except FatalModelError as error:
+            if not any(word in str(error).lower() for word in ("context", "length", "too long", "maximum")):
+                raise
+            cut = cut_index(history, estimate(history) // 2)
+            history = [history[0], *history[max(cut, 2):]]
+    return ""
 
 
-def file_ops(messages: list[dict]) -> tuple[set[str], set[str]]:
-    read, modified = set(), set()
-    for m in messages:
-        for call in m.get("tool_calls") or []:
-            try:
-                path = json.loads(call["function"]["arguments"]).get("path")
-            except (ValueError, AttributeError):
-                continue
-            name = call["function"]["name"]
-            if path and name == "read":
-                read.add(path)
-            elif path and name in ("write", "edit"):
-                modified.add(path)
-    return read, modified
+def compact(llm: LLM, system: str, tools: list[dict], messages: list[dict], state: dict,
+            refresh: Callable[[], tuple[str | None, str]] | None = None) -> list[dict]:
+    """New message list when the history exceeds the trigger, else `messages` unchanged.
 
-
-def compact(llm: LLM, messages: list[dict], state: dict) -> list[dict]:
-    """Returns the new message list; `state` carries the previous summary and file lists across compactions."""
+    `refresh` returns (fresh task text or None to keep the original, harness facts to attach verbatim)."""
     if estimate(messages) <= TRIGGER_TOKENS:
         return messages
-    second = messages[1]["content"] if len(messages) > 1 else ""
-    start = 2 if isinstance(second, str) and second.startswith(SUMMARY_TAG) else 1
     cut = cut_index(messages, KEEP_RECENT_TOKENS)
-    if cut <= start:
+    if cut <= 1:
         return messages
-    old = messages[start:cut]
-    read, modified = file_ops(old)
-    state["read"] = (state.get("read", set()) | read) - modified
-    state["modified"] = state.get("modified", set()) | modified
-    previous = state.get("summary", "")
-    prompt = (f"Task given to the engineer:\n{messages[0]['content'][:6000]}\n\n"
-              + (f"Previous summary:\n{previous}\n\n" if previous else "")
-              + f"Conversation to summarize:\n{serialize(old)}")
-    reply = llm.chat(SUMMARY_SYSTEM, [{"role": "user", "content": prompt}], [])
-    summary = reply.text.strip() or previous
+    summary = summarize(llm, system, tools, messages) or state.get("summary", "")
+    task, facts = refresh() if refresh else (None, "")
     state["summary"] = summary
-    files = (f"\n<read-files>\n{chr(10).join(sorted(state['read']))}\n</read-files>"
-             f"\n<modified-files>\n{chr(10).join(sorted(state['modified']))}\n</modified-files>")
-    before = estimate(messages)
-    new = [messages[0], {"role": "user", "content": f"{SUMMARY_TAG}\n{summary}{files}"}, *messages[cut:]]
-    print(f"[compact] {before} -> {estimate(new)} tokens (summarized {len(old)} messages)", flush=True)
+    state["count"] = state.get("count", 0) + 1
+    first = {"role": "user", "content": task} if task else messages[0]
+    note = f"{SUMMARY_TAG}\n{summary}" + (f"\n\n{facts}" if facts else "")
+    new = [first, {"role": "user", "content": note}, *messages[cut:]]
+    print(f"[compact] {estimate(messages)} -> {estimate(new)} tokens (replaced {cut - 1} messages)", flush=True)
     return new

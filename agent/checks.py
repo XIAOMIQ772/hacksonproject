@@ -12,7 +12,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from tools import clip, shell
+from tools import clip, kill_group, shell
 
 # Browser-native popups cannot be driven like page content (standard §3.3).
 STATIC_RULES = [
@@ -29,10 +29,12 @@ def free_port() -> int:
 
 
 def install(root: Path) -> str:
-    """npm install where node_modules is missing or older than package.json."""
+    """npm install where node_modules is missing or older than package.json (shared symlinks are left alone)."""
     out = []
     for part in ("backend", "frontend"):
         pkg, modules = root / part / "package.json", root / part / "node_modules"
+        if modules.is_symlink():  # a worktree sharing the integration branch's dependencies
+            continue
         if modules.is_dir() and modules.stat().st_mtime >= pkg.stat().st_mtime:
             continue
         result = shell("npm install --no-audit --no-fund --loglevel=error", root / part, 600)
@@ -53,7 +55,7 @@ def build(root: Path) -> str:
 
 
 class Server:
-    """Backend started like the evaluator does, on a fresh database."""
+    """Backend started as in production (`npm start`), on a fresh database."""
 
     def __init__(self, root: Path):
         self.root, self.port = root, free_port()
@@ -82,10 +84,7 @@ class Server:
         return clip(self.log.read_text(errors="replace"), 4000) if self.log.exists() else ""
 
     def stop(self) -> None:
-        try:
-            os.killpg(self.proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+        kill_group(self.proc.pid)
 
 
 def static(root: Path, allow: str = "") -> list[str]:
@@ -101,22 +100,41 @@ def static(root: Path, allow: str = "") -> list[str]:
     return found
 
 
+# Against a local server a correct action finishes in milliseconds, so a stuck locator fails after 3 s instead
+# of using up the whole 15 s test timeout (twice, with the retry). Applied on top of the project's own config.
+FAST_OVERRIDE = """const base = require('./{base}');
+const config = base.default || base;
+module.exports = {{ ...config, expect: {{ ...(config.expect || {{}}), timeout: 3000 }},
+  use: {{ ...(config.use || {{}}), actionTimeout: 3000, navigationTimeout: 5000, trace: 'off' }} }};
+"""
+
+
 def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int = 4) -> tuple[int, int, str]:
     """Run Playwright tests (backend/test-e2e unless `config` names another config); returns (passed, total, failures)."""
     tests = root / "backend" / "test-e2e"
     if not config and (not tests.is_dir() or not any(tests.glob("*.spec.*"))):
         return 0, 0, "no e2e tests in backend/test-e2e"
     report = Path(tempfile.mkdtemp(prefix="arc-pw-")) / "report.json"
-    cfg = f" --config={config}" if config else ""
-    cmd = (f"npx playwright test {pattern}{cfg} --reporter=json --workers={workers} --timeout=15000 --retries=0"
+    base = config or "playwright.config.js"
+    fast = root / "backend" / f".check-{report.parent.name}.config.cjs"  # unique: runs may overlap
+    if (root / "backend" / base).is_file():
+        fast.write_text(FAST_OVERRIDE.format(base=base))
+        cfg = f" --config={fast.name}"
+    else:
+        cfg = f" --config={config}" if config else ""
+    cmd = (f"npx playwright test {pattern}{cfg} --reporter=json --workers={workers} --timeout=15000 --retries=1"
            f" > {report} 2>/dev/null")
-    shell(cmd, root / "backend", 900, env={"PLAYWRIGHT_BASE_URL": url, "CI": "1"})
+    try:
+        shell(cmd, root / "backend", 900, env={"PLAYWRIGHT_BASE_URL": url, "ARC_WEB_BASE_URL": url, "E2E_BASE_URL": url,
+                                              "BASE_URL": url, "CI": "1"})
+    finally:
+        fast.unlink(missing_ok=True)
     try:
         data = json.loads(report.read_text())
     except ValueError:
         return 0, 0, "playwright produced no report (syntax error in a spec?):\n" + \
             shell(f"npx playwright test {pattern} --list", root / "backend", 120, env={"CI": "1"})
-    passed, total, failures = 0, 0, []
+    passed, total, failures, flaky = 0, 0, [], []
 
     def walk(suite: dict) -> None:
         nonlocal passed, total
@@ -126,9 +144,14 @@ def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int 
                 results = test.get("results") or [{}]
                 if test.get("status") == "expected":
                     passed += 1
+                elif test.get("status") == "flaky":  # failed once, passed on the retry
+                    passed += 1
+                    flaky.append(f"{spec.get('file')} :: {spec.get('title')}")
                 else:
-                    error = (results[-1].get("error") or {}).get("message", "")
-                    error = re.sub(r"\x1b\[[0-9;]*m", "", error)
+                    # errors[] also holds the pending action ("waiting for getByLabel(...)") behind a timeout
+                    messages = [e.get("message", "") for e in results[-1].get("errors") or []]
+                    messages = messages or [(results[-1].get("error") or {}).get("message", "")]
+                    error = re.sub(r"\x1b\[[0-9;]*m", "", "\n".join(dict.fromkeys(messages)))
                     failures.append(f"- {spec.get('file')} :: {spec.get('title')}\n  {clip(error, 700)}")
         for child in suite.get("suites", []):
             walk(child)
@@ -137,7 +160,16 @@ def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int 
         walk(suite)
     for error in data.get("errors", []):
         failures.append(f"- load error: {clip(re.sub(chr(27) + r'\[[0-9;]*m', '', error.get('message', '')), 700)}")
+    if flaky:
+        failures.append("FLAKY (passed on retry; tests probably share state with parallel tests):\n"
+                        + "\n".join(f"- {name}" for name in flaky))
     return passed, total, "\n".join(failures)
+
+
+def failed_tests(report: str) -> set[str]:
+    """Names ("file :: title") listed in a check report's FAILED TESTS section."""
+    section = report.split("FAILED TESTS:\n", 1)[1].split("\nE2E FAILURES:", 1)[0] if "FAILED TESTS:\n" in report else ""
+    return {line[2:] for line in section.splitlines() if line.startswith("- ")}
 
 
 def check(root: Path, pattern: str = "") -> tuple[bool, str]:
@@ -156,6 +188,9 @@ def check(root: Path, pattern: str = "") -> tuple[bool, str]:
     violations = static(root)
     lines = [f"build ok; fresh-database start ok; e2e {passed}/{total} passed"]
     if failures:
+        names = re.findall(r"^- (.+ :: .+)$", failures.split("FLAKY (", 1)[0], re.M)  # flaky ones passed
+        if names:  # complete list; the details below may be clipped
+            lines.append("FAILED TESTS:\n" + "\n".join(f"- {name}" for name in names[:300]))
         lines.append("E2E FAILURES:\n" + clip(failures, 9000))
     if violations:
         lines.append("RULE VIOLATIONS (standard §3.3):\n" + "\n".join(violations[:30]))
