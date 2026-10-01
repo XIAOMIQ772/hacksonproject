@@ -22,21 +22,24 @@ _print_lock = threading.Lock()
 
 ENGINEER = f"""You are a senior full-stack engineer working in a git workspace that contains a React (Vite) \
 frontend in frontend/ and an Express + SQLite backend in backend/ (dependencies are installed). Work with \
-the tools read, write, edit, apply, bash, check, requirement, subagent, wait_subagent and done. Paths are relative to the workspace root. Do not start \
+the tools apply_patch, bash, view_image, check, requirement, subagent, send_subagent, wait_subagent and done. \
+Paths are relative to the workspace root. Do not start \
 servers or browsers yourself; the check tool builds the frontend, starts the backend on a fresh database and \
 runs the Playwright tests in backend/test-e2e.
 
 ## Tool calls
 Every reply re-sends the whole conversation, so the number of replies sets the cost and the time of the build. \
 Parallelize tool calls whenever possible: one reply may contain many tool calls, the read-only ones at its \
-start (read, and shell commands such as cat, sed -n, grep, ls, wc, git show, git diff) run concurrently, and \
-the rest run in order.
-- Gather everything you need in one reply: all the files and searches for the next decision at once, never one \
-read per reply.
-- Write a whole slice in one reply: several write calls or one apply with every edit, followed in the same reply \
-by check.
-- Do not use python scripts to print large chunks of files or requirement text; use read and the requirement \
-tool.
+start (view_image, and shell commands such as cat, sed -n, nl, rg, grep, ls, wc, git show, git diff) run \
+concurrently, and the rest run in order.
+- Read and search with bash: `sed -n '1,200p' file`, `nl -ba file | sed -n '80,140p'` when you need line \
+numbers, `rg -n 'name' frontend/src`. Gather everything you need in one reply: all the files and searches for \
+the next decision at once, never one read per reply.
+- Write a whole slice in one reply: one apply_patch with every file and change, followed in the same reply by \
+check. Change existing files with small Update File changes instead of re-sending them whole, and do not \
+re-read a file after a successful patch.
+- Do not use python scripts to print large chunks of files or requirement text; use sed -n and the \
+requirement tool.
 - Debug through a subagent: when a check fails for a reason you cannot see from the report, or you would \
 otherwise try throwaway scripts (node -e, temporary test files, logging) to find out how your code behaves, \
 start a subagent with the failing test, the error and the files involved, and let it run the experiments in \
@@ -55,6 +58,9 @@ Do the critical path yourself: the code of the area you are building and the fix
 Start subagents whose work does not block each other together, as several subagent calls in one reply (for \
 example reviews of every finished area at once), using all free slots; never run them one after another. \
 Before you call wait_subagent, start every other subagent you will need, and keep working while they run.
+To correct or extend a subagent's task, use send_subagent instead of starting a new one: a running subagent \
+gets the message after its current step, and a finished one continues with what it already read, so send \
+follow-up work on the same files (fix what its review found, investigate the next failure there) to it.
 
 Read only files you need and keep code consistent with {PLAN_FILE}.
 
@@ -104,11 +110,12 @@ can run in parallel with your next step, such as a later feature area whose file
 Keep the critical path yourself.
 5. When every area is done, run check without a pattern, fix what fails, then call done.
 
-Reference images named in the requirements are readable under {req_dir}.
+Reference images named in the requirements are under {req_dir}; look at them with view_image.
 
-## Template files (current content)
+## Workspace files (the starter template; read the ones you need)
 {template}
 
+{notes}
 {outline}
 
 ## Seed data stated in scenario preconditions
@@ -125,7 +132,23 @@ then call done.
 ## Code map (every source file with its declarations; read a file only when you need its body)
 {outline_code}
 
+{notes}
 {outline}"""
+
+
+TASK_NOTES = {"github": "github", "sheet": "spreadsheet"}  # notes file in tasks/ -> word in the product's name
+
+
+def task_notes(tree: spec.Node) -> str:
+    """The conventions recorded for this product in tasks/<name>.md (seed data, URLs, element choices that the
+    tests expect and the requirements leave open), as a task section; empty for other products."""
+    for name, word in TASK_NOTES.items():
+        path = HERE / "tasks" / f"{name}.md"
+        if word in tree.name.lower() and path.is_file():
+            return ("## Product conventions (learned from earlier builds of this product and their tests: follow "
+                    "them exactly where the requirements leave a choice open; the requirement text wins where they "
+                    f"disagree)\n{path.read_text().strip()}\n\n")
+    return ""
 
 
 def log(label: str, text: str) -> None:
@@ -208,31 +231,55 @@ After delegating: do meaningful non-overlapping work at once, and do not redo it
 wait_subagent only when your next step is blocked on the result. When a result arrives, review the files it \
 changed before relying on them.""",
             "parameters": {"type": "object", "properties": {
-                "task": {"type": "string", "description": "Self-contained instructions and the output to report."},
+                "task": {"type": "string", "description": "Self-contained instructions: the goal, the files and "
+                         "requirement ids involved, the files it may change, and the output to report."},
                 "fork_context": {"type": "boolean", "description": "Default false: the subagent starts "
                                  "with only your task, so write it self-contained (the files, requirement ids and "
                                  "facts it needs). Set true only when the task cannot be explained without this "
                                  "conversation; the subagent then carries your whole context."},
                 "reasoning_effort": {"type": "string", "enum": ["low", "high", "max"],
-                                     "description": "Omit to inherit yours: low for mechanical work, max for "
+                                     "description": "Default: yours (high). low for mechanical work, max for "
                                                     "a hard diagnosis."}},
                 "required": ["task"]}}
+SEND = {"name": "send_subagent", "description": "Send a follow-up message to a subagent you started: a "
+        "correction, extra instructions, or a new task that builds on what it already read. A running subagent "
+        "receives it after its current step. A finished subagent continues its own conversation with the message "
+        "as its next task, keeping everything it read, and its next final answer arrives as a message again; this "
+        "needs a free subagent slot. Returns at once.",
+        "parameters": {"type": "object", "properties": {
+            "id": {"type": "integer", "description": "Subagent number, as returned by the subagent tool."},
+            "message": {"type": "string", "description": "The instructions, self-contained apart from what the "
+                        "subagent already knows from its task and its own work."}},
+            "required": ["id", "message"]}}
 WAIT = {"name": "wait_subagent", "description": "Block until a subagent finishes and return its final answer. "
-        "Use only when your next step cannot proceed without it.",
-        "parameters": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}}
-CHECK = {"name": "check", "description": "Build the frontend, start the backend on a fresh database, run the e2e "
-         "tests and the static rule checks. Pass pattern (e.g. 'sort.spec') to run only matching test files; "
-         "omit it to run the whole suite.",
-         "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}}}}
-REQUIREMENT = {"name": "requirement", "description": "Full text of atomic requirements (description, exact UI "
-               "strings, reference images, acceptance scenarios) and the rules of their groups.",
-               "parameters": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
-                              "required": ["ids"]}}
+        "Results otherwise arrive by themselves as a message after one of your steps, so use this only when your "
+        "next step cannot proceed without the result; nothing else happens in your session while you wait.",
+        "parameters": {"type": "object", "properties": {
+            "id": {"type": "integer", "description": "Subagent number, as returned by the subagent tool."}},
+            "required": ["id"]}}
+CHECK = {"name": "check", "description": "Build the frontend (npm run build), start the backend with npm start on "
+         "a fresh empty database, run the Playwright e2e tests in backend/test-e2e against it (4 workers, 15 s per "
+         "test, one retry) and the static rule checks. A whole-suite run reruns its failures one at a time, so "
+         "failures caused by load are reported as flaky. Takes about half a minute for one spec file and several "
+         "minutes for the whole suite; one check runs at a time across you and your subagents. The report starts "
+         "with CHECK PASSED or CHECK FAILED and lists build errors, failed tests with their errors and pending "
+         "locators, uncaught browser errors and rule violations.",
+         "parameters": {"type": "object", "properties": {
+             "pattern": {"type": "string", "description": "Run only test files whose path matches, e.g. "
+                         "'sort.spec' or 'sheets'. Default: empty, the whole suite."}}}}
+REQUIREMENT = {"name": "requirement", "description": "Full text of atomic requirements: the description (the "
+               "acceptance rule), exact UI strings, reference image paths, acceptance scenarios, and the rules of "
+               "the groups they belong to. Ask for all the ids of a feature area in one call.",
+               "parameters": {"type": "object", "properties": {
+                   "ids": {"type": "array", "items": {"type": "string"},
+                           "description": "Atomic requirement ids from the outline, e.g. [\"REQ-1-1-1\", \"REQ-1-2\"]."}},
+                   "required": ["ids"]}}
 
 SUBAGENT_ROLE = """You are now subagent {number}, started by the lead engineer for the task below. The lead \
 keeps working in the same workspace, so files may change while you work. {context}Change only the files \
-your task covers: the lead and other subagents edit the rest at the same time. subagent and wait_subagent \
-belong to the lead and are refused. When finished, call done: its summary is delivered to the lead as your final answer, so make \
+your task covers: the lead and other subagents edit the rest at the same time. The lead may send you further \
+messages while you work; follow them. subagent, send_subagent and wait_subagent belong to the lead and are \
+refused. When finished, call done: its summary is delivered to the lead as your final answer, so make \
 it complete and short (findings with file paths and exact names, and every file you changed).
 
 When your task is a review, the hidden tests locate every element by the exact text of the requirements, so \
@@ -253,19 +300,24 @@ appears twice in one view (a second link to the same page, a repeated button, a 
 Report each defect as file:line, the current text or attribute, and the exact text or attribute the \
 requirement demands, quoting the requirement.
 
-## Task
+{notes}## Task
 {task}"""
 
 
 class Helpers:
     """Subagents started with the subagent tool. They never block the lead: results arrive as messages, or on
-    request with wait_subagent."""
+    request with wait_subagent. send_subagent reaches a running subagent after its current step, and continues a
+    finished one in its own conversation."""
 
-    def __init__(self, root: Path, req_dir: Path, label: str, extras: dict):
-        self.root, self.req_dir, self.label, self.extras = root, req_dir, label, extras
+    def __init__(self, root: Path, req_dir: Path, label: str, extras: dict, notes: str = ""):
+        self.root, self.req_dir, self.label, self.extras, self.notes = root, req_dir, label, extras, notes
         self.pool = futures.ThreadPoolExecutor(max_workers=MAX_HELPERS)
         self.jobs: dict[int, tuple[str, futures.Future]] = {}
         self.delivered: set[int] = set()
+        self.lock = threading.Lock()  # guards inbox and active: a message never lands after a subagent's last look
+        self.inbox: dict[int, list[str]] = {}
+        self.active: set[int] = set()  # subagents that still take messages in their running session
+        self.sessions: dict[int, tuple[LLM, list[dict], int]] = {}  # model, final messages and turn of finished ones
         # numbering continues after a resume, so labels and transcript files stay unique
         found = [int(m[1]) for f in (root / checkpoint.AGENT_DIR).glob(f"{label}-helper*.jsonl")
                  if (m := re.match(rf"{re.escape(label)}-helper(\d+)", f.name))]
@@ -273,19 +325,64 @@ class Helpers:
 
     def start(self, task: str, effort: str = "", history: list[dict] | None = None) -> int:
         number = self.first + len(self.jobs)
-        label = f"{self.label}:helper{number}"
         llm = new_llm()
         if effort in EFFORTS:
             llm.effort = effort
         context = "You have the conversation so far; everything after it is your own work. " if history else ""
-        text = SUBAGENT_ROLE.format(number=number, context=context, task=task)
-        tools = Tools(self.root, readable=[self.req_dir])
-        future = self.pool.submit(loop.run, llm, ENGINEER, text, tools, extras=self.extras, max_steps=20,
-                                  hard_limit=60, label=label, history=history,
-                                  transcript=checkpoint.Transcript(self.root, label, commits=False))
-        self.jobs[number] = (task, future)
-        log(label, f"started{' (forked)' if history else ''}: {task[:200]}")
+        text = SUBAGENT_ROLE.format(number=number, context=context, notes=self.notes, task=task)
+        with self.lock:
+            self.active.add(number)
+        self.jobs[number] = (task, self.pool.submit(self.work, number, llm, text, history, 1))
+        log(f"{self.label}:helper{number}", f"started{' (forked)' if history else ''}: {task[:200]}")
         return number
+
+    def work(self, number: int, llm: LLM, text: str, history: list[dict] | None, turn: int) -> str:
+        """Run the subagent until it calls done with no message from the lead waiting."""
+        while True:
+            label = f"{self.label}:helper{number}" + (f"-{turn}" if turn > 1 else "")
+            final: list[dict] = []
+            try:
+                summary = loop.run(llm, ENGINEER, text, Tools(self.root, readable=[self.req_dir]),
+                                   extras=self.extras, max_steps=20, hard_limit=60, label=label, history=history,
+                                   final=final, on_step=lambda _step, _messages: self.take(number),
+                                   transcript=checkpoint.Transcript(self.root, label, commits=False))
+            except BaseException:  # a failed subagent takes no more messages
+                with self.lock:
+                    self.active.discard(number)
+                    self.inbox.pop(number, None)
+                raise
+            with self.lock:
+                pending = self.inbox.pop(number, [])
+                if not pending:
+                    self.active.discard(number)
+                    self.sessions[number] = (llm, final, turn)
+                    return summary
+            history, text, turn = final, follow_up(pending), turn + 1
+
+    def take(self, number: int) -> str | None:
+        """Messages from the lead waiting for subagent `number`, as one user message."""
+        with self.lock:
+            pending = self.inbox.pop(number, [])
+        return follow_up(pending) if pending else None
+
+    def send(self, number: int, message: str) -> str:
+        with self.lock:
+            if number in self.active:
+                self.inbox.setdefault(number, []).append(message)
+                return f"Message queued for subagent {number}; it receives it after its current step."
+        if len(self.running()) >= MAX_HELPERS:
+            return f"ERROR: {MAX_HELPERS} subagents are already running; wait for one with wait_subagent"
+        if number not in self.sessions:
+            return f"ERROR: subagent {number} ended without a conversation to continue (it failed); start a new one"
+        previous = "" if number in self.delivered else f"\n\nIts previous final answer:\n{self.result(number)}"
+        llm, history, turn = self.sessions.pop(number)
+        with self.lock:
+            self.active.add(number)
+        self.delivered.discard(number)
+        task = self.jobs[number][0]
+        self.jobs[number] = (task, self.pool.submit(self.work, number, llm, follow_up([message]), history, turn + 1))
+        log(f"{self.label}:helper{number}", f"continued: {message[:200]}")
+        return f"Subagent {number} continues with your message; its final answer will arrive as a message.{previous}"
 
     def result(self, number: int) -> str:
         task, future = self.jobs[number]
@@ -306,6 +403,10 @@ class Helpers:
 
     def close(self) -> None:
         self.pool.shutdown(wait=False, cancel_futures=True)
+
+
+def follow_up(messages: list[str]) -> str:
+    return "\n\n".join(f"Message from the lead engineer:\n{m}" for m in messages)
 
 
 def forked(messages: list[dict], call_id: str) -> list[dict]:
@@ -335,7 +436,7 @@ class Engineer:
         self.common = frozenset(spec.boilerplate(tree))  # template sentences, stated once in the outline
         self.last_report = ""
         self.built: list[str] = []  # snapshot commit of the last successful build
-        self.helpers = Helpers(root, req_dir, label, self.extras(lead=False))
+        self.helpers = Helpers(root, req_dir, label, self.extras(lead=False), task_notes(tree))
         self.settled = False  # the whole suite passed since the last compaction check
 
     def check(self, args: dict) -> str:
@@ -374,6 +475,14 @@ class Engineer:
                                     forked(messages, call_id) if args.get("fork_context") else None)
         return f"Subagent {number} started; its final answer will arrive as a message. Keep working."
 
+    def send_subagent(self, args: dict) -> str:
+        number, message = int(args.get("id", 0)), str(args.get("message", "")).strip()
+        if number not in self.helpers.jobs:
+            return f"ERROR: no subagent {number}"
+        if not message:
+            return "ERROR: message is empty"
+        return self.helpers.send(number, message)
+
     def wait_subagent(self, args: dict) -> str:
         number = int(args.get("id", 0))
         if number not in self.helpers.jobs:
@@ -404,13 +513,14 @@ class Engineer:
         return {"check": loop.Extra(CHECK, self.check if lead else self.helper_check),
                 "requirement": loop.Extra(REQUIREMENT, self.requirement),
                 "subagent": loop.Extra(SUBAGENT, self.subagent if lead else refused, context=True),
+                "send_subagent": loop.Extra(SEND, self.send_subagent if lead else refused),
                 "wait_subagent": loop.Extra(WAIT, self.wait_subagent if lead else refused)}
 
     def run(self, task: str, resume: int | str | None = None) -> str:
         extras = self.extras(lead=True)
         try:
-            return loop.run(self.llm, ENGINEER, task, Tools(self.root, readable=[self.req_dir]), extras=extras,
-                            max_steps=self.steps, on_step=self.on_step, label=self.label,
+            tools = Tools(self.root, readable=[self.req_dir], experiments=False)
+            return loop.run(self.llm, ENGINEER, task, tools, extras=extras, max_steps=self.steps, on_step=self.on_step, label=self.label,
                             transcript=checkpoint.Transcript(self.root, self.label), resume=resume,
                             refresh=self.refresh, milestone=self.milestone)
         finally:

@@ -9,35 +9,82 @@ import signal
 import subprocess
 from pathlib import Path
 
+from patch import parse_patch, update_text
+
 OUTPUT_LIMIT = 12000
 SECRET_ENV = ("OPENAI_API_KEY", "VISUAL_API_KEY", "ARCBENCH_COOKIE", "ARCBENCH_PASSWORD")
 
+APPLY_PATCH_DESCRIPTION = """Create, change, rename and delete files with a patch. The patch is a stripped-down, \
+file-oriented diff in this envelope:
+
+*** Begin Patch
+[ one or more file sections ]
+*** End Patch
+
+Each file section starts with one of three headers:
+*** Add File: <path> - create a file, or replace an existing file completely. Every following line is a + line \
+(the initial content), including empty lines (a lone +).
+*** Delete File: <path> - remove an existing file. Nothing follows.
+*** Update File: <path> - change an existing file in place, optionally followed by *** Move to: <new path> to \
+rename it.
+
+An Update File section holds one or more changes. Each change is a run of lines, each starting with one \
+character: a space for an unchanged context line, - for a line to remove, + for a line to add. Give about 3 \
+context lines above and below each change, copied exactly from the file, so the location is unique. When that \
+is not enough (similar code in several places), start the change with an @@ line naming the enclosing line, \
+such as `@@ function SheetPage() {` or `@@ router.post('/sheets', async (req, res) => {`: the change is then \
+looked for after that line. Separate changes in one file with @@ lines; give them in file order. End a change \
+that must apply at the end of the file with *** End of File. A change of only + lines is inserted right after \
+its @@ line; ended by *** End of File instead, it is appended to the file. To replace a whole file, use Add File.
+
+Example:
+*** Begin Patch
+*** Add File: frontend/src/hello.ts
++export const hello = 'Hello';
+*** Update File: backend/src/app.js
+@@ app.get('/api/health', (req, res) => {
+-  res.json({ code: 200, message: 'Backend Ready' });
++  res.json({ code: 200, message: 'OK' });
+ });
+*** Delete File: frontend/src/old.ts
+*** End Patch
+
+Rules:
+- Paths are relative to the workspace root; node_modules cannot be edited.
+- Prefix every added line with +, also in a new file.
+- Context and removed lines must match the file; differences in leading or trailing whitespace and typographic \
+quotes or dashes are tolerated. A change whose lines match several places without an @@ line is refused.
+- Put every change you already know, for several files, into one patch. Prefer Update File with small changes \
+to replacing a whole existing file: every line you send costs output time.
+- Each file is written only if all of its changes apply; the other files of the patch are still written, and \
+the result lists the failed changes with the closest lines in the file. Resend only those.
+- Do not re-read a file after a successful patch to verify it: the result reports every failure."""
+
 SCHEMAS = [
-    {"name": "read", "description": "Read a text file (numbered lines; use offset/limit for large files) or view an image (.png/.jpg/.webp).",
+    {"name": "apply_patch", "description": APPLY_PATCH_DESCRIPTION,
      "parameters": {"type": "object", "properties": {
-         "path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}},
-         "required": ["path"]}},
-    {"name": "write", "description": "Create or overwrite a file with the full content.",
+         "input": {"type": "string", "description": "The whole patch, from *** Begin Patch to *** End Patch."}},
+         "required": ["input"]}},
+    {"name": "bash", "description": "Run a command with bash -lc in the workspace root and return its combined "
+     "stdout and stderr followed by [exit N]. Use it to read and search files (`sed -n '1,200p' f`, `nl -ba f | "
+     "sed -n '80,140p'` for line numbers, `rg -n pattern dir`, `ls`, `git diff`) and to run tools such as npx tsc. "
+     "Output longer than 12000 characters keeps its start and end with the middle omitted, so read large files in "
+     "ranges. Read-only commands (cat, sed -n, grep, rg, ls, wc, git diff/show/log, ...) at the start of a reply run "
+     "concurrently. Do not start servers, watchers or browsers: the process group is killed when the command ends "
+     "or times out; use the check tool to run the app.",
      "parameters": {"type": "object", "properties": {
-         "path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
-    {"name": "edit", "description": "Replace one exact, unique occurrence of old_text with new_text. For "
-     "several changes use apply.",
-     "parameters": {"type": "object", "properties": {
-         "path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}},
-         "required": ["path", "old_text", "new_text"]}},
-    {"name": "apply", "description": "Make several file changes in one call: each change either writes a "
-     "whole file (path, content) or replaces one exact, unique occurrence (path, old_text, new_text). "
-     "Changes to the same file apply in order. A file with a change that cannot be applied is left unchanged "
-     "and reported; the other files are written.",
-     "parameters": {"type": "object", "properties": {"changes": {"type": "array", "items": {
-         "type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"},
-                                          "old_text": {"type": "string"}, "new_text": {"type": "string"}},
-         "required": ["path"]}}}, "required": ["changes"]}},
-    {"name": "bash", "description": "Run a shell command in the workspace root (no interactive or "
-     "long-running servers; they are killed at the timeout).",
-     "parameters": {"type": "object", "properties": {
-         "command": {"type": "string"}, "timeout": {"type": "integer", "description": "seconds, max 600"}},
+         "command": {"type": "string", "description": "The bash command line."},
+         "timeout": {"type": "integer", "description": "Seconds before the command is killed; default 180, "
+                     "max 600."}},
          "required": ["command"]}},
+    {"name": "view_image", "description": "Look at an image file (.png, .jpg, .jpeg, .gif, .webp), such as a "
+     "reference screenshot named in the requirements. The result is the image itself when your model can see "
+     "images, otherwise a detailed description of it (layout, every visible control with its exact label text, "
+     "states) written by a vision model.",
+     "parameters": {"type": "object", "properties": {
+         "path": {"type": "string", "description": "Image path, relative to the workspace root or to the "
+                  "requirements directory, or absolute."}},
+         "required": ["path"]}},
 ]
 
 
@@ -49,14 +96,14 @@ def clip(text: str, limit: int = OUTPUT_LIMIT) -> str:
 
 
 class Tools:
-    def __init__(self, root: Path, readable: list[Path] | None = None, read_only: bool = False):
+    def __init__(self, root: Path, readable: list[Path] | None = None, experiments: bool = True):
         self.root = root.resolve()
         self.readable = [self.root, *[p.resolve() for p in readable or []]]
-        self.read_only = read_only  # only read and read-only shell commands
+        self.experiments = experiments  # False for the lead: debugging experiments belong in a subagent
 
     @property
     def schemas(self) -> list[dict]:
-        return [s for s in SCHEMAS if not self.read_only or s["name"] in ("read", "bash")]
+        return SCHEMAS
 
     def _path(self, path: str, *, write: bool) -> Path:
         target = (self.root / path).resolve()
@@ -72,86 +119,62 @@ class Tools:
     def run(self, name: str, arguments: str) -> str:
         try:
             args = json.loads(arguments or "{}")
-            if self.read_only and (name not in ("read", "bash")
-                                   or (name == "bash" and not is_read_only(args.get("command", "")))):
-                return ("ERROR: this session is read-only; use read and read-only shell commands (git diff/show/"
-                        "log, grep, ls, cat, sed -n) without redirection")
             return getattr(self, f"_{name}")(**args)
-        except TypeError as error:  # arguments that do not match the schema, e.g. apply without changes[]
+        except TypeError as error:  # arguments that do not match the schema, e.g. apply_patch without input
             schema = next((s["parameters"] for s in SCHEMAS if s["name"] == name), {})
             return f"ERROR: {error}; {name} takes {json.dumps(schema.get('properties', {}))}"
         except Exception as error:  # the model sees every tool failure and decides what to do
             return f"ERROR: {type(error).__name__}: {error}"
 
-    def _read(self, path: str, offset: int = 1, limit: int = 400) -> str:
-        lines = self._path(path, write=False).read_text(errors="replace").splitlines()
-        start = max(1, offset)
-        body = "\n".join(f"{i:5} {line}" for i, line in enumerate(lines[start - 1:start - 1 + limit], start))
-        more = len(lines) - (start - 1 + limit)
-        return clip(body + (f"\n... {more} more lines" if more > 0 else ""))
-
-    def _write(self, path: str, content: str) -> str:
-        target = self._path(path, write=True)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        tmp = target.with_name(target.name + ".tmp")
-        tmp.write_text(content)
-        tmp.replace(target)
-        return f"wrote {path} ({content.count(chr(10)) + 1} lines)"
-
-    def _edit(self, path: str, old_text: str, new_text: str) -> str:
-        target = self._path(path, write=True)
-        text = target.read_text()
-        count = text.count(old_text)
-        if count != 1:
-            return f"ERROR: old_text found {count} times in {path}; it must match exactly once"
-        target.write_text(text.replace(old_text, new_text))
-        return f"edited {path}"
-
-    def _apply(self, changes: list[dict]) -> str:
-        pending: dict[Path, str] = {}  # final text per file; a failed change leaves its file's text as it was
-        failed: list[tuple[Path | None, str]] = []
-        for number, change in enumerate(changes, 1):
-            path = str(change.get("path", ""))
+    def _apply_patch(self, input: str) -> str:
+        sections = parse_patch(input)
+        done, failed = [], []
+        for section in sections:
             try:
-                target = self._path(path, write=True)
+                target = self._path(section.path, write=True)
+                moved = self._path(section.move, write=True) if section.move else None
+                if section.kind == "add":
+                    text = section.content
+                elif not target.is_file():
+                    raise ValueError(f"{section.path} does not exist")
+                elif section.kind == "delete":
+                    text = None
+                else:
+                    text = update_text(target.read_text(), section.chunks, section.path)
             except ValueError as error:
-                failed.append((None, f"change {number} ({path}): {error}"))
+                failed.append(f"- {section.path}: {error}")
                 continue
-            if "content" in change:
-                pending[target] = str(change["content"])
+            if text is None:
+                target.unlink()
+                done.append(f"D {section.path}")
                 continue
-            if "old_text" not in change or "new_text" not in change:
-                failed.append((target, f"change {number} ({path}): needs content, or old_text and new_text"))
-                continue
-            if target not in pending and not target.is_file():
-                failed.append((target, f"change {number}: {path} does not exist"))
-                continue
-            text = pending.get(target, target.read_text() if target.is_file() else "")
-            count = text.count(change["old_text"])
-            if count != 1:
-                failed.append((target, f"change {number} ({path}): old_text found {count} times; it must match "
-                                       "exactly once"))
-                continue
-            pending[target] = text.replace(change["old_text"], change["new_text"])
-        broken = {target for target, _ in failed}  # a file with a failed change keeps its old text whole
-        for target, text in pending.items():
-            if target in broken:
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            tmp = target.with_name(target.name + ".tmp")
+            destination = moved or target
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            tmp = destination.with_name(destination.name + ".tmp")
             tmp.write_text(text)
-            tmp.replace(target)
-        written = ", ".join(str(t.relative_to(self.root)) for t in pending if t not in broken) or "nothing"
+            tmp.replace(destination)
+            if moved and moved != target:
+                target.unlink()
+            done.append(f"{'A' if section.kind == 'add' else 'M'} {section.move or section.path}")
+        written = "\n".join(done) or "nothing"
         if failed:
-            return (f"ERROR: {len(failed)} of {len(changes)} changes failed; files with a failed change were left "
-                    f"unchanged, the other files were written ({written}). Resend every change to these files:\n"
-                    + "\n".join(f"- {f}" for _, f in failed))
-        return f"applied: {written}"
+            return (f"ERROR: {len(failed)} of {len(sections)} file sections failed and those files were left unchanged; "
+                    f"the other files were written:\n{written}\nThe context and - lines must be copied from the file as it is now; "
+                    f"read the current text of these files (nl -ba <file> | sed -n 'a,bp') before resending their "
+                    f"patches:\n" + "\n".join(failed))
+        return f"Success. Updated the following files:\n{written}"
 
     def _bash(self, command: str, timeout: int = 180) -> str:
+        if not self.experiments and EXPERIMENT.search(command):
+            return ("ERROR: run the e2e tests through the check tool (pattern selects spec files). Starting the "
+                    "server, browser scripts and test runs by hand belong in a subagent: start one with the failing "
+                    "test, the error and the files involved, and let it run the experiments and report the cause.")
         return shell(command, self.root, min(max(timeout, 1), 600))
 
 
+# Running the app or a browser by hand: e2e runs, server starts and browser scripts.
+EXPERIMENT = re.compile(r"\bplaywright\s+test\b|\btest:e2e\b|\bchromium\.launch\b|\bnpm\s+(?:run\s+)?(?:start|dev)\b"
+                        r"|\bnode\s+(?:\S*/)?src/index\.js\b")
 READ_ONLY = {"cat", "ls", "grep", "rg", "egrep", "head", "tail", "wc", "find", "sed", "awk", "sort", "uniq",
              "cut", "tr", "echo", "printf", "pwd", "tree", "stat", "file", "diff", "jq", "nl", "basename",
              "dirname", "realpath", "true", "cd", "git"}

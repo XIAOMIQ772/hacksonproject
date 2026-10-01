@@ -66,14 +66,32 @@ class SpecTest(unittest.TestCase):
         self.assertIn(template, spec.outline(root))
 
 
+def patch(tools: Tools, body: str) -> str:
+    return tools.run("apply_patch", json.dumps({"input": f"*** Begin Patch\n{body}\n*** End Patch"}))
+
+
 class ToolsTest(unittest.TestCase):
-    def test_edit_requires_unique_match_and_paths_stay_inside(self):
+    def test_patch_refuses_ambiguous_changes_and_paths_stay_inside(self):
         with tempfile.TemporaryDirectory() as tmp:
             tools = Tools(Path(tmp))
-            tools.run("write", json.dumps({"path": "a/b.txt", "content": "x x"}))
-            self.assertIn("2 times", tools.run("edit", json.dumps({"path": "a/b.txt", "old_text": "x", "new_text": "y"})))
-            self.assertIn("outside", tools.run("read", json.dumps({"path": "../etc/passwd"})))
-            self.assertIn("node_modules", tools.run("write", json.dumps({"path": "node_modules/x.js", "content": ""})))
+            self.assertIn("A a/b.txt", patch(tools, "*** Add File: a/b.txt\n+x\n+x"))
+            self.assertIn("match 2 places", patch(tools, "*** Update File: a/b.txt\n-x\n+y"))
+            self.assertIn("outside", patch(tools, "*** Add File: ../escape.txt\n+x"))
+            self.assertIn("node_modules", patch(tools, "*** Add File: node_modules/x.js\n+x"))
+            self.assertIn("A c.txt", tools.run("apply_patch", json.dumps({"input": "*** Add File: c.txt\n+x"})))
+            self.assertIn("A e.txt", patch(tools, "*** Add File: d.txt\n+x\n*** End Patch\n*** Add File: e.txt\n+y"))
+            self.assertEqual((Path(tmp) / "d.txt").read_text(), "x\n")
+            patch(tools, "*** Add File: q.js\n+db.all(`SELECT 1\n   FROM t`);")
+            self.assertEqual((Path(tmp) / "q.js").read_text(), "db.all(`SELECT 1\n   FROM t`);\n")
+
+    def test_bash_refuses_e2e_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lead = Tools(Path(tmp), experiments=False)
+            for command in ("cd backend && npx playwright test a.spec.ts", "npm run test:e2e -- a.spec.ts",
+                            "node src/index.js & sleep 2; curl localhost:3000", "cd backend && npm start"):
+                self.assertIn("subagent", lead.run("bash", json.dumps({"command": command})), command)
+            self.assertIn("exit 0", lead.run("bash", json.dumps({"command": "grep -rn start . || true"})))
+            self.assertNotIn("subagent", Tools(Path(tmp)).run("bash", json.dumps({"command": "echo npm start"})))
 
     def test_bash_kills_background_children(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -153,7 +171,7 @@ class ImageTest(unittest.TestCase):
 
     def test_vision_model_gets_image_attached(self):
         llm = type("L", (), {"vision": True})()
-        text, attachment = loop.read_image(llm, self.tools, json.dumps({"path": "shot.png"}))
+        text, attachment = loop.view_image(llm, self.tools, json.dumps({"path": "shot.png"}))
         self.assertIn("attached", text)
         self.assertEqual(attachment["content"][1]["type"], "image_url")
         self.assertTrue(attachment["content"][1]["image_url"]["url"].startswith("data:image/png;base64,"))
@@ -162,12 +180,14 @@ class ImageTest(unittest.TestCase):
     def test_text_model_gets_description_from_visual_model(self):
         llm = type("L", (), {"vision": False})()
         loop._visual["llm"] = type("V", (), {"chat": lambda self, *a: type("R", (), {"text": "a toolbar"})()})()
-        text, attachment = loop.read_image(llm, self.tools, json.dumps({"path": "shot.png"}))
+        text, attachment = loop.view_image(llm, self.tools, json.dumps({"path": "shot.png"}))
         self.assertIn("a toolbar", text)
         self.assertIsNone(attachment)
 
     def test_text_files_are_not_images(self):
-        self.assertIsNone(loop.read_image(type("L", (), {"vision": True})(), self.tools, json.dumps({"path": "a.ts"})))
+        text, attachment = loop.view_image(type("L", (), {"vision": True})(), self.tools, json.dumps({"path": "a.ts"}))
+        self.assertIn("not an image", text)
+        self.assertIsNone(attachment)
 
 
 class ScriptedLLM:
@@ -183,7 +203,8 @@ class ScriptedLLM:
         if n >= 4:
             call = {"id": f"c{n}", "name": "done", "arguments": json.dumps({"summary": "ok"})}
         else:
-            call = {"id": f"c{n}", "name": "write", "arguments": json.dumps({"path": f"step{n}.txt", "content": str(n)})}
+            call = {"id": f"c{n}", "name": "apply_patch", "arguments": json.dumps(
+                {"input": f"*** Begin Patch\n*** Add File: step{n}.txt\n+{n}\n*** End Patch"})}
         message = {"role": "assistant", "content": "", "tool_calls": [
             {"id": call["id"], "type": "function", "function": {"name": call["name"], "arguments": call["arguments"]}}]}
         return type("R", (), {"message": message, "tool_calls": [call], "text": ""})()
@@ -256,45 +277,57 @@ class ParallelReadTest(unittest.TestCase):
                 clock.sleep(0.3)
                 return original(name, arguments)
             tools.run = slow
-            calls = [{"id": n, "name": "read", "arguments": json.dumps({"path": f"{n}.txt"})} for n in "abc"]
+            calls = [{"id": n, "name": "bash", "arguments": json.dumps({"command": f"cat {n}.txt"})} for n in "abc"]
             started = clock.time()
-            results = loop.prefetch_reads(FakeLLM(), tools, calls + [{"id": "w", "name": "write", "arguments": "{}"}])
+            results = loop.prefetch_reads(FakeLLM(), tools, calls + [{"id": "w", "name": "apply_patch", "arguments": "{}"}])
             self.assertLess(clock.time() - started, 0.8)
             self.assertEqual(list(results), ["a", "b", "c"])
             self.assertIn("a", results["a"][0])
-            self.assertEqual(loop.prefetch_reads(FakeLLM(), tools, [calls[0], {"id": "w", "name": "edit",
+            self.assertEqual(loop.prefetch_reads(FakeLLM(), tools, [calls[0], {"id": "w", "name": "apply_patch",
                                                                               "arguments": "{}"}, calls[1]]), {})
 
 
 class HarnessSpeedTest(unittest.TestCase):
-    def test_apply_writes_good_changes_and_reports_failed_ones(self):
+    def test_patch_writes_good_files_and_reports_failed_ones(self):
         with tempfile.TemporaryDirectory() as tmp:
             tools, root = Tools(Path(tmp)), Path(tmp)
             (root / "a.js").write_text("one\ntwo\n")
-            bad = tools.run("apply", json.dumps({"changes": [
-                {"path": "new.js", "content": "x"}, {"path": "a.js", "old_text": "missing", "new_text": "y"}]}))
-            self.assertIn("1 of 2 changes failed", bad)
-            self.assertIn("change 2 (a.js)", bad)
-            self.assertEqual((root / "new.js").read_text(), "x")
-            self.assertEqual((root / "a.js").read_text(), "one\ntwo\n")
-            half = tools.run("apply", json.dumps({"changes": [
-                {"path": "a.js", "old_text": "one", "new_text": "1"}, {"path": "a.js", "old_text": "nope", "new_text": "y"}]}))
+            bad = patch(tools, "*** Add File: new.js\n+x\n*** Update File: a.js\n-missing\n+y")
+            self.assertIn("1 of 2 file sections failed", bad)
+            self.assertIn("A new.js", bad)
+            self.assertIn("change 1", bad)
+            self.assertEqual((root / "new.js").read_text(), "x\n")
+            half = patch(tools, "*** Update File: a.js\n-one\n+1\n@@\n-nope\n+y")
             self.assertIn("left unchanged", half)
             self.assertEqual((root / "a.js").read_text(), "one\ntwo\n")  # never half edited
-            ok = tools.run("apply", json.dumps({"changes": [
-                {"path": "new.js", "content": "x"}, {"path": "a.js", "old_text": "one", "new_text": "1"},
-                {"path": "a.js", "old_text": "two", "new_text": "2"}]}))
-            self.assertIn("applied", ok)
+            ok = patch(tools, "*** Update File: a.js\n-one\n+1\n@@\n-two\n+2\n*** Delete File: new.js")
+            self.assertIn("Success", ok)
             self.assertEqual((root / "a.js").read_text(), "1\n2\n")
+            self.assertFalse((root / "new.js").exists())
 
-    def test_reviewer_tools_cannot_modify(self):
+    def test_patch_locates_changes_like_codex(self):
         with tempfile.TemporaryDirectory() as tmp:
-            tools = Tools(Path(tmp), read_only=True)
-            self.assertEqual({s["name"] for s in tools.schemas}, {"read", "bash"})
-            self.assertIn("read-only", tools.run("write", json.dumps({"path": "x", "content": "y"})))
-            self.assertIn("read-only", tools.run("bash", json.dumps({"command": "touch x"})))
-            self.assertFalse((Path(tmp) / "x").exists())
-            self.assertIn("exit 0", tools.run("bash", json.dumps({"command": "ls"})))
+            tools, root = Tools(Path(tmp)), Path(tmp)
+            (root / "a.js").write_text("function a() {\n  return 1;\n}\nfunction b() {\n  return 1;\n}\n")
+            # an @@ line picks the second of two equal lines; indentation differences are tolerated
+            self.assertIn("Success", patch(tools, "*** Update File: a.js\n@@ function b() {\n-return 1;\n+  return 2;"))
+            self.assertEqual((root / "a.js").read_text().count("return 2"), 1)
+            self.assertIn("return 2;\n}\n", (root / "a.js").read_text())
+            # a context line without its leading space is still context
+            self.assertIn("Success", patch(tools, "*** Update File: a.js\n function a() {\n-  return 1;\n+  return 0;\n}"))
+            self.assertTrue((root / "a.js").read_text().startswith("function a() {\n  return 0;\n}\n"))
+            # the @@ line repeated as the first context line, as in a unified diff
+            self.assertIn("Success", patch(tools, "*** Update File: a.js\n@@ function b() {\n+// b\n function b() {"))
+            self.assertIn("}\n// b\nfunction b() {", (root / "a.js").read_text())
+            # + lines ended by *** End of File are appended; Move to renames
+            self.assertIn("Add File to replace", patch(tools, "*** Update File: a.js\n+// end"))
+            self.assertIn("M b.js", patch(tools, "*** Update File: a.js\n*** Move to: b.js\n+// end\n*** End of File"))
+            self.assertTrue((root / "b.js").read_text().endswith("}\n// end\n"))
+            self.assertFalse((root / "a.js").exists())
+            near = patch(tools, "*** Update File: b.js\n function b() {\n-  return 3;\n+  return 4;")
+            self.assertIn("first 1 lines match file lines 5-5", near)
+            self.assertIn("'  return 2;' (file line 6)", near)
+            self.assertIn("Closest lines", patch(tools, "*** Update File: b.js\n-  return 3;\n+  return 4;"))
 
     def test_read_only_commands(self):
         from tools import is_read_only
@@ -348,10 +381,10 @@ class TrimTest(unittest.TestCase):
         messages = [{"role": "user", "content": "task"}]
         for i in range(turns):
             path = "once.ts" if i == 0 else "app.ts"  # app.ts is rewritten every turn, once.ts never again
-            args = json.dumps({"path": path, "content": "x" * 5000})
+            args = json.dumps({"input": f"*** Begin Patch\n*** Add File: {path}\n+{'x' * 5000}\n*** End Patch"})
             messages += [{"role": "assistant", "content": "", "reasoning_content": "r" * 8000,
                           "tool_calls": [{"id": f"c{i}", "type": "function",
-                                          "function": {"name": "write", "arguments": args}}]},
+                                          "function": {"name": "apply_patch", "arguments": args}}]},
                          {"role": "tool", "tool_call_id": f"c{i}", "content": "y" * 8000}]
         return messages
 
@@ -368,8 +401,8 @@ class TrimTest(unittest.TestCase):
         self.assertEqual(trimmed[1]["reasoning_content"], "r" * 8000)  # passed back verbatim
         self.assertEqual(trimmed[1], messages[1])  # once.ts was not changed again: its content stays
         rewritten = json.loads(trimmed[3]["tool_calls"][0]["function"]["arguments"])
-        self.assertEqual(rewritten["path"], "app.ts")
-        self.assertIn("trimmed", rewritten["content"])  # a later write superseded it
+        self.assertIn("app.ts", rewritten["input"])
+        self.assertIn("trimmed", rewritten["input"])  # a later patch superseded it
         self.assertIn("trimmed", trimmed[2]["content"])
         self.assertIs(compaction.trim(trimmed), trimmed)  # stable until enough new history accumulates
 
@@ -422,6 +455,53 @@ class HelperTest(unittest.TestCase):
             roles.loop.run, roles.new_llm = original, original_llm
 
 
+    def test_messages_reach_running_and_finished_subagents(self):
+        import threading
+        import roles
+        release, seen = threading.Event(), []
+        original, original_llm = roles.loop.run, roles.new_llm
+
+        def session(llm, system, text, tools, **kwargs):
+            seen.append(text)
+            if len(seen) == 1:
+                release.wait(5)
+                seen.append(kwargs["on_step"](1, []))  # a step boundary: the queued message is taken
+            kwargs["final"][:] = [{"role": "user", "content": text}]
+            return f"answer {len(seen)}"
+        roles.loop.run, roles.new_llm = session, (lambda model=None: FakeLLM())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                helpers = roles.Helpers(Path(tmp), Path(tmp), "engineer", {})
+                number = helpers.start("review area 1")
+                self.assertIn("queued", helpers.send(number, "also check the dialog"))
+                release.set()
+                self.assertIn("answer 2", helpers.result(number))
+                self.assertIn("also check the dialog", seen[1])
+                self.assertIn("continues", helpers.send(number, "now fix what you found"))
+                self.assertIn("answer 3", helpers.result(number))
+                self.assertIn("now fix what you found", seen[2])
+                helpers.close()
+        finally:
+            roles.loop.run, roles.new_llm = original, original_llm
+
+
+class TaskNotesTest(unittest.TestCase):
+    def test_notes_are_chosen_by_product_name(self):
+        import roles
+        saved = roles.HERE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                roles.HERE = Path(tmp)
+                (Path(tmp) / "tasks").mkdir()
+                (Path(tmp) / "tasks" / "github.md").write_text("Org pages live at /<org>.")
+                github = spec.Node("ROOT", "GitHub Collaboration Platform Core Requirements", "FOLDER")
+                other = spec.Node("ROOT", "Ticket Booking", "FOLDER")
+                self.assertIn("/<org>", roles.task_notes(github))
+                self.assertEqual(roles.task_notes(other), "")
+        finally:
+            roles.HERE = saved
+
+
 class ForkTest(unittest.TestCase):
     def test_fork_keeps_the_prefix_and_answers_every_pending_call(self):
         import roles
@@ -452,6 +532,47 @@ class ReportTest(unittest.TestCase):
         report = ("build ok; fresh-database start ok; e2e 1/2 passed\nFAILED TESTS:\n- a.spec.ts :: breaks\n"
                   "E2E FAILURES:\n- a.spec.ts :: breaks\n  boom")
         self.assertEqual(checks.failed_tests(report), {"a.spec.ts :: breaks"})
+
+
+class FirstTokenTest(unittest.TestCase):
+    def setUp(self):
+        import llm
+        self.saved = llm.HEDGE_SECONDS, llm.FIRST_TOKEN_SECONDS
+        llm.HEDGE_SECONDS, llm.FIRST_TOKEN_SECONDS = 0.5, 1.5
+
+    def tearDown(self):
+        import llm
+        llm.HEDGE_SECONDS, llm.FIRST_TOKEN_SECONDS = self.saved
+
+    @staticmethod
+    def chunk(text):
+        from types import SimpleNamespace as N
+        return N(choices=[N(delta=N(content=text, tool_calls=None, reasoning_content=None, model_extra={}),
+                            finish_reason=None)], usage=None)
+
+    def test_a_stuck_request_is_hedged_and_a_silent_one_cut_short(self):
+        import time as clock
+        import llm
+        calls = []
+
+        def first_stuck():
+            calls.append(1)
+            if len(calls) == 1:
+                clock.sleep(5)
+            return (c for c in [self.chunk("a"), self.chunk("b")])
+        started = clock.time()
+        texts = [c.choices[0].delta.content for c in llm.paced(first_stuck, {"sent": clock.time()})]
+        self.assertEqual(texts, ["a", "b"])  # the second request answered
+        self.assertLess(clock.time() - started, 1.2)
+        self.assertEqual(len(calls), 2)
+
+        def silent():
+            clock.sleep(5)
+            return (c for c in [])
+        started = clock.time()
+        with self.assertRaises(llm.FirstTokenTimeout):
+            list(llm.paced(silent, {"sent": clock.time()}))
+        self.assertLess(clock.time() - started, 2)
 
 
 class StreamTest(unittest.TestCase):

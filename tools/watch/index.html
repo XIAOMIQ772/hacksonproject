@@ -123,6 +123,9 @@ function toolHead(name, a) {
     case "write": return ["写入", a.path];
     case "edit": return ["编辑", a.path];
     case "apply": return ["修改", (a.changes || []).map((c) => c.path).filter((p, i, all) => all.indexOf(p) === i).join(", ")];
+    case "apply_patch": return ["修改", patchFiles(a.input).join(", ")];
+    case "view_image": return ["看图", a.path];
+    case "send_subagent": return ["追加指令", "#" + a.id + " " + short(a.message, 100)];
     case "check": return ["测试", a.pattern || "全部用例"];
     case "requirement": return ["查看需求", (a.ids || []).join(", ")];
     case "subagent": return ["派出子 agent", short(a.task, 120)];
@@ -132,7 +135,22 @@ function toolHead(name, a) {
   }
 }
 
+function patchFiles(input) {
+  return [...(input || "").matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm)].map((m) => m[1].trim());
+}
+
+function patchBody(input) {
+  return `<div class="diff">${(input || "").split("\n").map((l) =>
+    /^\*\*\* (Add|Update|Delete) File: /.test(l) ? `<div class="muted">${esc(l.slice(4))}</div>`
+    : /^\*\*\* /.test(l) || /^@@/.test(l) ? `<div class="muted">${esc(l)}</div>`
+    : l.startsWith("+") ? `<div class="a">${esc(l)}</div>`
+    : l.startsWith("-") ? `<div class="d">${esc(l)}</div>`
+    : `<div>${esc(l)}</div>`).join("")}</div>`;
+}
+
 function toolBody(name, a) {
+  if (name === "apply_patch") return patchBody(a.input);
+  if (name === "send_subagent") return `<pre class="out">${esc(a.message)}</pre>`;
   if (name === "edit") return `<div class="diff">${(a.old_text || "").split("\n").map((l) => `<div class="d">- ${esc(l)}</div>`).join("")}${(a.new_text || "").split("\n").map((l) => `<div class="a">+ ${esc(l)}</div>`).join("")}</div>`;
   if (name === "write") return `<pre class="out">${esc(a.content)}</pre>`;
   if (name === "apply") return (a.changes || []).map((c) => c.content != null
@@ -164,7 +182,7 @@ function attachResult(m) {
   delete pending[m.tool_call_id];
   const name = el.dataset.name, text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
   el.querySelector(".t").innerHTML = tag(name, text);
-  if (name !== "edit" && name !== "write" && name !== "apply" || /^ERROR/.test(text))
+  if (!["edit", "write", "apply", "apply_patch"].includes(name) || /^ERROR/.test(text))
     el.querySelector(".res").innerHTML = `<pre class="out">${esc(text)}</pre>`;
   if (name === "check" && !text.startsWith("CHECK PASSED")) el.open = true;
 }

@@ -29,14 +29,14 @@ SYSTEM = roles.ENGINEER  # kept for tests and tools that inspect the prompt
 
 
 def workspace_map(root: Path) -> str:
-    """Full text of the small template sources, so the planner does not spend steps exploring them."""
-    parts = []
+    """Paths and line counts of the template sources; the engineer reads the ones it needs."""
+    lines = []
     for path in sorted(p for part in ("backend", "frontend") for p in (root / part).rglob("*")
                        if p.is_file() and "node_modules" not in p.parts and "dist" not in p.parts):
-        if path.name in MAP_SKIP or path.stat().st_size > 6000:
+        if path.name in MAP_SKIP:
             continue
-        parts.append(f"--- {path.relative_to(root)}\n{path.read_text(errors='replace').rstrip()}")
-    return "\n".join(parts)
+        lines.append(f"- {path.relative_to(root)} ({path.read_text(errors='replace').count(chr(10)) + 1} lines)")
+    return "\n".join(lines)
 
 
 def setup(root: Path) -> None:
@@ -66,11 +66,13 @@ class Builder:
 
     def task(self) -> str:
         return roles.BUILD_TASK.format(plan=roles.PLAN_FILE, req_dir=self.req_dir, template=workspace_map(self.root),
-                                       outline=spec.outline(self.tree), seeds=spec.seed_facts(self.tree) or "- none")
+                                       notes=roles.task_notes(self.tree), outline=spec.outline(self.tree),
+                                       seeds=spec.seed_facts(self.tree) or "- none")
 
     def refreshed_task(self) -> str:
         return roles.REFRESH_TASK.format(plan=roles.PLAN_FILE, plan_text=self.plan_text(),
-                                         outline_code=roles.code_map(self.root), outline=spec.outline(self.tree))
+                                         outline_code=roles.code_map(self.root), notes=roles.task_notes(self.tree),
+                                         outline=spec.outline(self.tree))
 
     def build(self, resume: bool) -> None:
         if self.run.done("build"):

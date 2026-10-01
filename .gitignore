@@ -14,3 +14,6 @@ reference/
 tasks/benchmark-bundle/
 tasks/catalog-benchmark/
 /run-local-model.sh
+
+# Task-specific conventions for the agent: packaged into submissions from the local copy, never published
+agent/tasks/

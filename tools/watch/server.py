@@ -99,12 +99,14 @@ def collect(root: Path, log: Path, tree) -> dict:
 
     helpers: dict[int, dict] = {}
     for line in lines:
-        m = re.match(r"^\[[^\]]*:helper(\d+)\] (.*)$", line)
+        m = re.match(r"^\[[^\]]*:helper(\d+)(?:-\d+)?\] (.*)$", line)  # -N: continued by send_subagent
         if not m:
             continue
         h = helpers.setdefault(int(m[1]), {"n": int(m[1]), "task": "", "state": "running", "steps": 0, "answer": ""})
         if m[2].startswith("started"):
             h["task"] = m[2].split(": ", 1)[-1]
+        elif m[2].startswith("continued"):
+            h["state"] = "running"
         elif m[2].startswith("done in"):
             h["state"] = "done"
         elif re.match(r"\d+ ", m[2]):

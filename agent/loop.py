@@ -16,9 +16,13 @@ from checkpoint import Transcript
 from llm import LLM
 from tools import Tools, is_read_only
 
-DONE = {"name": "done", "description": "Finish this task. Call only after the check tool passes, or when "
-        "no further progress is possible; summarize what was built and what is still missing.",
-        "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}}
+DONE = {"name": "done", "description": "Finish this task and end the session; other tool calls in the same "
+        "reply after done are not run. Call only after the check tool passes, or when no further progress is "
+        "possible.",
+        "parameters": {"type": "object", "properties": {
+            "summary": {"type": "string", "description": "What was built or found, the last check result, and "
+                        "what is still missing. A subagent's summary is its final answer to the lead."}},
+            "required": ["summary"]}}
 
 
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
@@ -29,12 +33,12 @@ _visual: dict[str, LLM] = {}
 _visual_lock = threading.Lock()
 
 
-def read_image(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None] | None:
-    """For image paths: attach the image for a vision model, otherwise describe it with the visual model."""
+def view_image(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None]:
+    """Attach the image for a vision model, otherwise describe it with the visual model."""
     path = json.loads(arguments or "{}").get("path", "")
     mime = IMAGE_TYPES.get(Path(path).suffix.lower())
     if not mime:
-        return None
+        return f"ERROR: {path} is not an image ({', '.join(IMAGE_TYPES)}); read text files with bash", None
     data = base64.b64encode(tools._path(path, write=False).read_bytes()).decode()
     image = {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data}"}}
     if llm.vision:
@@ -52,17 +56,16 @@ def read_image(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None
     return f"Description of image {path} (from a vision model):\n{reply.text}", None
 
 
-def read_call(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None]:
-    """Result of a read tool call and an optional image attachment."""
+def image_call(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None]:
+    """Result of a view_image call and an optional image attachment."""
     try:
-        image = read_image(llm, tools, arguments)
+        return view_image(llm, tools, arguments)
     except Exception as error:
-        image = (f"ERROR: {type(error).__name__}: {error}", None)
-    return image or (tools.run("read", arguments), None)
+        return f"ERROR: {type(error).__name__}: {error}", None
 
 
 def read_only(call: dict) -> bool:
-    if call["name"] == "read":
+    if call["name"] == "view_image":
         return True
     if call["name"] != "bash":
         return False
@@ -73,7 +76,7 @@ def read_only(call: dict) -> bool:
 
 
 def prefetch_reads(llm: LLM, tools: Tools, calls: list[dict]) -> dict[str, tuple[str, dict | None]]:
-    """Run the read-only calls (file reads, read-only shell commands) that precede the first other call of a
+    """Run the read-only calls (images, read-only shell commands) that precede the first other call of a
     reply concurrently; they cannot observe that call's effects, so the result equals sequential execution."""
     leading = []
     for call in calls:
@@ -84,8 +87,8 @@ def prefetch_reads(llm: LLM, tools: Tools, calls: list[dict]) -> dict[str, tuple
         return {}
 
     def execute(call: dict) -> tuple[str, dict | None]:
-        if call["name"] == "read":
-            return read_call(llm, tools, call["arguments"])
+        if call["name"] == "view_image":
+            return image_call(llm, tools, call["arguments"])
         return tools.run(call["name"], call["arguments"]), None
     with ThreadPoolExecutor(max_workers=min(8, len(leading))) as pool:
         return {call["id"]: result for call, result in zip(leading, pool.map(execute, leading))}
@@ -99,7 +102,7 @@ class Extra:
 
 
 HARD_LIMIT_FACTOR = 4  # guard against a session that never converges
-REREAD_MIN_CHARS = 600  # shorter results cost less than the note that replaces them
+REREAD_MIN_CHARS = 600  # shorter outputs cost less than the note that replaces them
 
 
 def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Extra] | None = None,
@@ -108,14 +111,15 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
         on_step: Callable[[int, list[dict]], str | None] | None = None,
         refresh: Callable[[], tuple[str | None, str]] | None = None, hard_limit: int | None = None,
         milestone: Callable[[], bool] | None = None,
-        history: list[dict] | None = None) -> str:
+        history: list[dict] | None = None, final: list[dict] | None = None) -> str:
     """Returns the model's final summary.
 
     With a transcript every message is recorded and each step ends with a workspace commit. `resume`
     ("last" or a step number) continues from that checkpoint: files are reset to its commit and later
     transcript records are archived. `history` starts the conversation with earlier messages (a forked
     session), so the provider's prompt cache covers them. `milestone` reports (once) that the work so far is
-    settled, which lets a moderately long history be compacted early.
+    settled, which lets a moderately long history be compacted early. `final` receives the conversation as it
+    ends, so the session can be continued later.
     """
     extras = extras or {}
     schemas = [{"type": "function", "function": s}
@@ -170,6 +174,8 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
                 add({"role": "tool", "tool_call_id": call["id"], "content": "finished"})
                 if transcript:
                     transcript.checkpoint(step, len(messages), label)
+                if final is not None:
+                    final[:] = messages
                 print(f"[{label}] done in {step} steps, {time.time() - started:.0f}s: "
                       f"{args.get('summary', '')[:300]}", flush=True)
                 return args.get("summary", "")
@@ -184,28 +190,30 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
                 result, attachment = prefetched.pop(call["id"])
                 if attachment:
                     attachments.append(attachment)
-            elif name == "read":
-                result, attachment = read_call(llm, tools, call["arguments"])
+            elif name == "view_image":
+                result, attachment = image_call(llm, tools, call["arguments"])
                 if attachment:
                     attachments.append(attachment)
             else:
                 result = tools.run(name, call["arguments"])
-            if name == "read" and len(result) > REREAD_MIN_CHARS and any(
+            if name == "bash" and read_only(call) and len(result) > REREAD_MIN_CHARS and any(
                     m.get("role") == "tool" and m.get("content") == result for m in messages):
-                result = ("Unchanged: this exact content is already in the conversation from your earlier read of "
-                          "the same file; use that.")
+                result = ("Unchanged: this exact output is already in the conversation from an earlier command; "
+                          "use that.")
             print(f"[{label}] {step} {name} {call['arguments'][:120]!r} -> {result[:160]!r}", flush=True)
             add({"role": "tool", "tool_call_id": call["id"], "content": result})
         for attachment in attachments:  # user messages may only follow the complete batch of tool results
             add(attachment)
         if getattr(reply, "finish", "") == "length":
             add({"role": "user", "content": "Your reply reached the output token limit and was cut off, so its "
-                 "last tool call is incomplete. Write large files in several smaller parts (write, then edit to "
-                 "append) and keep reasoning brief."})
+                 "last tool call is incomplete. Send large files in several smaller patches (Add File with the "
+                 "first part, then Update File sections of only + lines ended by *** End of File, which append to the file) and keep reasoning brief."})
         advice = on_step(step, messages) if on_step else None
         if advice:
             add({"role": "user", "content": advice})
         if transcript:
             transcript.checkpoint(step, len(messages), label)
+    if final is not None:
+        final[:] = messages
     print(f"[{label}] step limit reached after {time.time() - started:.0f}s", flush=True)
     return "step limit reached"

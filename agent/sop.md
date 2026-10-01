@@ -6,7 +6,7 @@
 3. Finish the area. When its tests pass, run `check` without a pattern so earlier areas stay green, start a `subagent` to review the area's user interface against its requirement ids (exact names, roles, attributes and messages), and move on to the next area; its findings arrive as a message.
 
 ## Economy
-- Put every change you already know into one `apply` call (several files, several edits); do not spend one step per edit. Use `write` for new files. Do not re-read a file that is already in the conversation and unchanged.
+- Put every change you already know into one `apply_patch` call (several files, several changes); do not spend one step per edit. Change existing files with Update File, not by re-sending them whole. Do not re-read a file that is already in the conversation and unchanged.
 - Hand surveys of many files to a subagent as well, so only its conclusion enters your context.
 - Keep source files small (about 400 lines at most): split pages into components and routes into modules, so a file is cheap to read and an error is easy to locate.
 - Keep replies short: no restating the requirements, no long plans beyond the checklist.

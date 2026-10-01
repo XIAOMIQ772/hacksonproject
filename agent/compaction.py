@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Callable
 
 from llm import LLM, FatalModelError
@@ -72,16 +73,19 @@ TRIM_MIN_GAIN = int(os.environ.get("AGENT_TRIM_MIN_GAIN", "30000"))
 TRIMMED = "[trimmed from the context; read the file or run the command again if needed]"
 
 
+PATCH_FILE = re.compile(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$", re.M)
+
+
 def _paths(call: dict) -> set[str]:
-    """Files a write, edit or apply call changes."""
+    """Files an apply_patch call changes."""
+    if call["function"]["name"] != "apply_patch":
+        return set()
     try:
         args = json.loads(call["function"]["arguments"] or "{}")
     except ValueError:
         return set()
-    if not isinstance(args, dict):
-        return set()
-    changes = [c for c in args.get("changes") or [] if isinstance(c, dict)]
-    return {p for p in [args.get("path"), *(c.get("path") for c in changes)] if isinstance(p, str)}
+    patch = args.get("input") if isinstance(args, dict) else None
+    return {p.strip() for p in PATCH_FILE.findall(patch)} if isinstance(patch, str) else set()
 
 
 def _trim_message(m: dict, rewritten: set[str] = frozenset()) -> dict:
