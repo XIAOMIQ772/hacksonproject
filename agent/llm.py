@@ -1,6 +1,7 @@
 """OpenAI-compatible chat client with DeepSeek thinking support, retries and usage accounting."""
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import threading
@@ -17,6 +18,33 @@ class FatalModelError(RuntimeError):
 
 USAGE_LOG: Path | None = None  # one JSON line per model call when set (see usage_report)
 _log_lock = threading.Lock()
+
+# Requests in flight, rewritten to LIVE_FILE when one changes phase (connecting, waiting for the first token,
+# reasoning, answering, retrying) and at most every LIVE_INTERVAL while tokens stream, for the run viewer. The
+# record carries the tail of the text streamed so far.
+LIVE_FILE: Path | None = None
+_live: dict[int, dict] = {}
+_live_lock = threading.Lock()
+_live_ids = itertools.count(1)
+_live_written = 0.0
+LIVE_INTERVAL = 0.3
+LIVE_TAIL = 6000  # characters of streamed reasoning and answer kept in the live record
+
+
+def _live_update(key: int, force: bool = False, remove: bool = False, **fields) -> None:
+    global _live_written
+    with _live_lock:
+        if remove:
+            _live.pop(key, None)
+        else:
+            _live.setdefault(key, {}).update(fields)
+        now = time.time()
+        if not LIVE_FILE or (not force and now - _live_written < LIVE_INTERVAL):
+            return
+        _live_written = now
+        tmp = LIVE_FILE.with_name(LIVE_FILE.name + ".tmp")
+        tmp.write_text(json.dumps({"time": now, "requests": list(_live.values())}, ensure_ascii=False))
+        tmp.replace(LIVE_FILE)
 
 
 @dataclass
@@ -54,10 +82,9 @@ def usage_report(path: Path) -> str:
         return "no model calls recorded"
 
     def role(label: str) -> str:
-        if label.endswith(":advisor"):
-            return "advisor"
-        return next((name for name in ("plan", "foundation", "final", "visual", "merge") if label.startswith(name)),
-                    "node")
+        if ":helper" in label:
+            return "helper"
+        return "visual" if label == "visual" else "engineer"
 
     lines = []
     for title, key in (("model", lambda r: r["model"]), ("role", lambda r: role(r["label"]))):
@@ -91,8 +118,8 @@ def supports_vision(model: str) -> bool:
     return model in VISION_MODELS or "vision" in model
 
 
-REASONING_EFFORT = os.environ.get("AGENT_REASONING_EFFORT", "low")  # starting level; the agent may change it
-EFFORTS = ("low", "medium", "high")
+REASONING_EFFORT = os.environ.get("AGENT_REASONING_EFFORT", "high")  # a subagent may be given another level
+EFFORTS = ("low", "high", "max")  # DeepSeek maps medium to high
 # Transient failures (connection errors, timeouts, 5xx, rate limits) are retried for this long before the run
 # gives up and delivers its current state; credential and quota errors stop immediately.
 RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
@@ -102,7 +129,7 @@ IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "90"))
 
 class LLM:
     def __init__(self, model: str | None = None, *, api_key: str | None = None, base_url: str | None = None,
-                 max_tokens: int = int(os.environ.get("AGENT_MAX_TOKENS", "16384"))):
+                 max_tokens: int | None = int(os.environ.get("AGENT_MAX_TOKENS", "131072"))):
         self.model = model or os.environ.get("MODEL") or "glm-5.3-flash"
         self.client = OpenAI(api_key=api_key or os.environ.get("OPENAI_API_KEY"),
                              base_url=base_url or os.environ.get("OPENAI_BASE_URL"),
@@ -110,19 +137,22 @@ class LLM:
         self.max_tokens = max_tokens
         self.vision = supports_vision(self.model)
         self.usage = Usage()
-        self.effort = REASONING_EFFORT  # low | medium | high | "" (endpoint default)
+        self.effort = REASONING_EFFORT  # one of EFFORTS, or "" for the endpoint default
         self.label = ""  # session name recorded in the usage log
 
     @classmethod
     def visual(cls) -> "LLM":
         """The platform's separate vision model, used when the main model cannot read images."""
-        return cls(os.environ.get("VISUAL_MODEL") or "deepseek-v4-flash-vision-exp",
-                   api_key=os.environ.get("VISUAL_API_KEY"), base_url=os.environ.get("VISUAL_BASE_URL"),
-                   max_tokens=2048)
+        visual = cls(os.environ.get("VISUAL_MODEL") or "deepseek-v4-flash-vision-exp",
+                     api_key=os.environ.get("VISUAL_API_KEY"), base_url=os.environ.get("VISUAL_BASE_URL"),
+                     max_tokens=None)
+        visual.effort = "low"  # describing an image needs no long reasoning
+        return visual
 
     def chat(self, system: str, messages: list[dict], tools: list[dict], tool_choice: str | None = None) -> Reply:
-        request = {"model": self.model, "max_tokens": self.max_tokens,
-                   "messages": [{"role": "system", "content": system}, *messages]}
+        request = {"model": self.model, "messages": [{"role": "system", "content": system}, *messages]}
+        if self.max_tokens:  # None: the endpoint's own limit
+            request["max_tokens"] = self.max_tokens
         if tools:
             request["tools"] = tools
             if tool_choice:
@@ -134,9 +164,29 @@ class LLM:
         request.update(stream=True, stream_options={"include_usage": True})
         started = time.time()
         attempt = 0
+        key = next(_live_ids)
+        timing: dict = {}
+
+        def progress(kind: str, text: str) -> None:
+            if "first" not in timing:
+                timing["first"] = time.time()
+                _live_update(key, force=True, phase=kind, ttft=round(timing["first"] - timing["sent"], 2))
+            timing["chars"] = timing.get("chars", 0) + len(text)
+            timing[kind] = (timing.get(kind, "") + text)[-LIVE_TAIL:]
+            phase = _live.get(key, {}).get("phase")
+            _live_update(key, force=phase != kind, phase=kind, chars=timing["chars"],
+                         reasoning=timing.get("reasoning", ""), answer=timing.get("answering", ""))
+
         while True:
+            timing.update(sent=time.time(), chars=0, reasoning="", answering="")
+            timing.pop("first", None)
+            _live_update(key, force=True, label=self.label, model=self.model, effort=self.effort, started=started,
+                         sent=timing["sent"], phase="connecting", attempt=attempt, chars=0, ttft=None,
+                         reasoning="", answer="")
             try:
-                message, finish, usage = self._receive(self.client.chat.completions.create(**request))
+                stream = self.client.chat.completions.create(**request)
+                _live_update(key, force=True, phase="waiting")
+                message, finish, usage = self._receive(stream, progress)
                 break
             except APIStatusError as error:
                 body = str(error.body or error.message).lower()
@@ -155,11 +205,18 @@ class LLM:
             wait = min(60, 5 * 2 ** attempt)
             attempt += 1
             print(f"[llm] {type(retry).__name__}: {str(retry)[:200]}; retry in {wait}s", flush=True)
+            _live_update(key, force=True, phase="retrying", error=f"{type(retry).__name__}: {str(retry)[:160]}",
+                         retry_at=time.time() + wait)
             time.sleep(wait)
+        ended = time.time()
+        _live_update(key, force=True, remove=True)
         record = self.usage.add(usage)
         if USAGE_LOG and record:
-            record.update(time=round(started, 1), seconds=round(time.time() - started, 1), model=self.model,
-                          label=self.label, effort=self.effort, retries=attempt, finish=finish)
+            first = timing.get("first")
+            record.update(time=round(started, 1), seconds=round(ended - started, 1), model=self.model,
+                          label=self.label, effort=self.effort, retries=attempt, finish=finish,
+                          ttft=round(first - timing["sent"], 2) if first else None,
+                          tps=round(record["completion"] / (ended - first), 1) if first and ended > first else None)
             with _log_lock, USAGE_LOG.open("a") as log:
                 log.write(json.dumps(record) + "\n")
         calls = [{"id": c["id"], "name": c["function"]["name"], "arguments": c["function"]["arguments"]}
@@ -167,8 +224,9 @@ class LLM:
         return Reply(message, calls, message.get("content") or "", finish)
 
     @staticmethod
-    def _receive(stream) -> tuple[dict, str, object]:
-        """Assemble a streamed reply into (assistant message, finish reason, usage)."""
+    def _receive(stream, progress=None) -> tuple[dict, str, object]:
+        """Assemble a streamed reply into (assistant message, finish reason, usage). `progress(kind, text)` is
+        told about every streamed piece: kind "reasoning" or "answering"."""
         content, reasoning, calls, finish, usage = [], [], {}, "", None
         for chunk in stream:
             usage = getattr(chunk, "usage", None) or usage
@@ -177,10 +235,17 @@ class LLM:
                 finish = choice.finish_reason or finish
                 if delta.content:
                     content.append(delta.content)
+                    if progress:
+                        progress("answering", delta.content)
                 thought = getattr(delta, "reasoning_content", None) or (delta.model_extra or {}).get("reasoning_content")
                 if thought:
                     reasoning.append(thought)
+                    if progress:
+                        progress("reasoning", thought)
                 for part in delta.tool_calls or []:
+                    if progress and part.function:
+                        name = f"\n[{part.function.name}] " if part.function.name else ""
+                        progress("answering", name + (part.function.arguments or ""))
                     call = calls.setdefault(part.index, {"id": "", "type": "function",
                                                          "function": {"name": "", "arguments": ""}})
                     call["id"] = part.id or call["id"]

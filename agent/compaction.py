@@ -12,18 +12,23 @@ from typing import Callable
 
 from llm import LLM, FatalModelError
 
-TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "600000"))
-KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "40000"))
+TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "400000"))
+KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "60000"))
+# At a milestone (the whole suite passes) the work behind it is settled, so a history past MILESTONE_TOKENS
+# is compacted there instead of in the middle of the next piece of work.
+MILESTONE_TOKENS = int(os.environ.get("AGENT_MILESTONE_TOKENS", "340000"))
+MILESTONE_KEEP_TOKENS = KEEP_RECENT_TOKENS
 SUMMARY_TAG = "[Handover summary: an earlier part of this session was compacted]"
 
 SUMMARY_REQUEST = """CONTEXT CHECKPOINT. Your earlier messages will be removed from the conversation and \
 replaced by the summary you write now; another instance of you continues from it. Do not call tools; \
-answer with the summary only. The continuation also receives the task again with a fresh code map and the \
-current content of the files the task owns, the latest check report and any unaddressed reviewer \
-feedback, so do not copy those. Write:
+answer with the summary only. The continuation also receives the task again with the current plan and a fresh \
+code map, and the latest check report, so do not copy those. Include results of subagents that are still \
+relevant. Write:
 
-## Requirement checklist
-Each requirement or scenario of the task: done and passing / implemented but failing (why) / not started.
+## Progress
+Each feature area of the plan with its requirement ids: done and passing / implemented but failing (why) / \
+not started. Subagents still running and what each was asked to do.
 ## Decisions
 Design choices made and the reasons, including approaches tried and abandoned.
 ## Current problem
@@ -61,14 +66,81 @@ def cut_index(messages: list[dict], keep_tokens: int) -> int:
     return cut
 
 
+TRIM_START_TOKENS = int(os.environ.get("AGENT_TRIM_START_TOKENS", "200000"))
+TRIM_KEEP_TOKENS = int(os.environ.get("AGENT_TRIM_KEEP_TOKENS", "60000"))
+TRIM_MIN_GAIN = int(os.environ.get("AGENT_TRIM_MIN_GAIN", "30000"))
+TRIMMED = "[trimmed from the context; read the file or run the command again if needed]"
+
+
+def _paths(call: dict) -> set[str]:
+    """Files a write, edit or apply call changes."""
+    try:
+        args = json.loads(call["function"]["arguments"] or "{}")
+    except ValueError:
+        return set()
+    if not isinstance(args, dict):
+        return set()
+    changes = [c for c in args.get("changes") or [] if isinstance(c, dict)]
+    return {p for p in [args.get("path"), *(c.get("path") for c in changes)] if isinstance(p, str)}
+
+
+def _trim_message(m: dict, rewritten: set[str] = frozenset()) -> dict:
+    """`m` without the bulky parts the model rarely needs again: long tool output, the content of files that
+    were changed again later (`rewritten`) and screenshots. The content of a file not changed since stays: it
+    is the model's record of what the file holds. Reasoning is passed back verbatim, as DeepSeek expects."""
+    if m["role"] == "assistant":
+        calls = []
+        for call in m.get("tool_calls") or []:
+            arguments = call["function"]["arguments"] or ""
+            changed = _paths(call)
+            if len(arguments) > 1500 and changed and changed <= rewritten:
+                try:
+                    args = json.loads(arguments)
+                    args = {k: (f"{v[:120]} ... {TRIMMED}" if isinstance(v, str) and len(v) > 300 else
+                                "[trimmed]" if isinstance(v, list) and len(json.dumps(v)) > 300 else v)
+                            for k, v in args.items()}
+                    call = {**call, "function": {**call["function"], "arguments": json.dumps(args, ensure_ascii=False)}}
+                except ValueError:
+                    pass
+            calls.append(call)
+        return {**m, "tool_calls": calls} if calls else m
+    if m["role"] == "tool" and isinstance(m.get("content"), str) and len(m["content"]) > 600:
+        return {**m, "content": f"{m['content'][:200]}\n{TRIMMED}"}
+    if m["role"] == "user" and isinstance(m.get("content"), list):
+        text = " ".join(p.get("text", "") for p in m["content"] if p.get("type") == "text")
+        return {**m, "content": f"{text}\n[screenshot trimmed from the context]".strip()}
+    return m
+
+
+def trim(messages: list[dict]) -> list[dict]:
+    """Trim the bulky parts of turns before the most recent TRIM_KEEP_TOKENS once that saves TRIM_MIN_GAIN
+    tokens. Every trim changes the history once, so the prompt cache is rebuilt only after each batch; short
+    sessions (under TRIM_START_TOKENS) are left alone because the rebuilt cache would not pay off."""
+    if estimate(messages) < TRIM_START_TOKENS:
+        return messages
+    cut = cut_index(messages, TRIM_KEEP_TOKENS)
+    later: list[set[str]] = [set() for _ in messages]  # files changed by calls after each message
+    seen: set[str] = set()
+    for i in range(len(messages) - 1, -1, -1):
+        later[i] = set(seen)
+        for call in messages[i].get("tool_calls") or []:
+            seen |= _paths(call)
+    old = [_trim_message(m, later[i]) for i, m in enumerate(messages[1:cut], 1)]
+    if estimate(messages[1:cut]) - estimate(old) < TRIM_MIN_GAIN:
+        return messages
+    return [messages[0], *old, *messages[cut:]]
+
+
 def summarize(llm: LLM, system: str, tools: list[dict], messages: list[dict]) -> str:
     """The session's own summary of `messages`. If the request itself is too long for the model, the oldest
     turns after the task are dropped first, which keeps the cached prefix as long as possible."""
     history = list(messages)
     for _ in range(4):
         try:
-            reply = llm.chat(system, [*history, {"role": "user", "content": SUMMARY_REQUEST}], tools,
-                             tool_choice="none")
+            request = [*history, {"role": "user", "content": SUMMARY_REQUEST}]
+            reply = llm.chat(system, request, tools, tool_choice="none")
+            if not reply.text.strip():  # deepseek-v4-flash sometimes calls tools anyway; without tools it cannot
+                reply = llm.chat(system, request, [])
             return reply.text.strip()
         except FatalModelError as error:
             if not any(word in str(error).lower() for word in ("context", "length", "too long", "maximum")):
@@ -79,13 +151,15 @@ def summarize(llm: LLM, system: str, tools: list[dict], messages: list[dict]) ->
 
 
 def compact(llm: LLM, system: str, tools: list[dict], messages: list[dict], state: dict,
-            refresh: Callable[[], tuple[str | None, str]] | None = None) -> list[dict]:
-    """New message list when the history exceeds the trigger, else `messages` unchanged.
+            refresh: Callable[[], tuple[str | None, str]] | None = None, milestone: bool = False) -> list[dict]:
+    """New message list when the history exceeds the trigger (or, at a milestone, MILESTONE_TOKENS), else
+    `messages` unchanged.
 
     `refresh` returns (fresh task text or None to keep the original, harness facts to attach verbatim)."""
-    if estimate(messages) <= TRIGGER_TOKENS:
+    size = estimate(messages)
+    if size <= (MILESTONE_TOKENS if milestone else TRIGGER_TOKENS):
         return messages
-    cut = cut_index(messages, KEEP_RECENT_TOKENS)
+    cut = cut_index(messages, MILESTONE_KEEP_TOKENS if milestone else KEEP_RECENT_TOKENS)
     if cut <= 1:
         return messages
     summary = summarize(llm, system, tools, messages) or state.get("summary", "")
@@ -95,5 +169,6 @@ def compact(llm: LLM, system: str, tools: list[dict], messages: list[dict], stat
     first = {"role": "user", "content": task} if task else messages[0]
     note = f"{SUMMARY_TAG}\n{summary}" + (f"\n\n{facts}" if facts else "")
     new = [first, {"role": "user", "content": note}, *messages[cut:]]
-    print(f"[compact] {estimate(messages)} -> {estimate(new)} tokens (replaced {cut - 1} messages)", flush=True)
+    print(f"[compact]{' milestone' if milestone else ''} {size} -> {estimate(new)} tokens "
+          f"(replaced {cut - 1} messages)", flush=True)
     return new
