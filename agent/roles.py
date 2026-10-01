@@ -49,7 +49,8 @@ experiment you run yourself stays in your context for the rest of the build.
 ## Subagents
 Your context is the most valuable resource of this build; a subagent spends its own. Keep one or two \
 subagents busy most of the time, and delegate by default whenever one of these comes up:
-- an area is finished: a subagent reviews it against its requirement ids;
+- an area is finished: a subagent reviews it against its requirement ids and the list of its files; review \
+each area once, and never an area still being built or the whole app at once;
 - you start implementing an area: a subagent drafts the e2e tests of the next area into its spec file;
 - a check fails and the cause is not obvious from the report: a subagent investigates and reports cause and fix;
 - you need to understand more than two or three files you did not just write: a subagent surveys them and \
@@ -82,6 +83,8 @@ creates its own objects through the UI with unique names and enters the data it 
 seeded records but never modify them.
 - Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
 and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
+- Assert texts the way the hidden tests do: `getByText(text, {{ exact: true }})` / `toHaveText`, never \
+`toContainText`, which hides extra characters (an icon letter, a prefix) that make exact locators fail.
 - Pass `{{ exact: true }}` for short or numeric names ('3', 'A1', 'Save') so they do not also match '13', \
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \
@@ -206,6 +209,9 @@ def new_llm(model: str | None = None) -> LLM:
 
 
 MAX_HELPERS = int(os.environ.get("AGENT_HELPERS", "4"))
+HELPER_STEPS = 25  # a subagent is asked to wrap up here; the lead can continue it with send_subagent
+WRAP_UP = (f"You have used {HELPER_STEPS} steps. Wrap up now: finish the item you are on in a few steps, then "
+           "call done with your findings, every file you changed and what is left; the lead can continue you.")
 
 SUBAGENT = {"name": "subagent", "description": f"""Start a subagent: another engineer with your model and \
 tools who works in the background in this same workspace, so its edits are immediately visible to you. The \
@@ -281,10 +287,13 @@ your task covers: the lead and other subagents edit the rest at the same time. T
 messages while you work; follow them. subagent, send_subagent and wait_subagent belong to the lead and are \
 refused. When finished, call done: its summary is delivered to the lead as your final answer, so make \
 it complete and short (findings with file paths and exact names, and every file you changed).
+Work in few steps: read every file you need in one reply (several reads at once), not one file per step.
 
-When your task is a review, the hidden tests locate every element by the exact text of the requirements, so \
-compare the user interface with the requirement text character by character and treat every difference as a \
-defect:
+When your task is a review, read the requirement text and the files your task names (grep for the rest), \
+fix the defects you find in those files unless the task says report only, and add no tests: run check, \
+with the area's pattern, only after you changed a file. When nothing differs, say so and call done. The \
+hidden tests locate every element by the exact text of the requirements, so compare the user interface with the \
+requirement text character by character and treat every difference as a defect:
 - Accessible names: label text, aria-label, button and link text, headings, tab, menu item and option text \
 must equal the quoted requirement string exactly: same characters, spacing, punctuation and language, with no \
 added words, units, colons, icons-as-text or translations.
@@ -343,8 +352,9 @@ class Helpers:
             final: list[dict] = []
             try:
                 summary = loop.run(llm, ENGINEER, text, Tools(self.root, readable=[self.req_dir]),
-                                   extras=self.extras, max_steps=20, hard_limit=60, label=label, history=history,
-                                   final=final, on_step=lambda _step, _messages: self.take(number),
+                                   extras=self.extras, max_steps=HELPER_STEPS, hard_limit=60, label=label,
+                                   history=history, final=final,
+                                   on_step=lambda step, _messages: self.take(number, step),
                                    transcript=checkpoint.Transcript(self.root, label, commits=False))
             except BaseException:  # a failed subagent takes no more messages
                 with self.lock:
@@ -359,11 +369,13 @@ class Helpers:
                     return summary
             history, text, turn = final, follow_up(pending), turn + 1
 
-    def take(self, number: int) -> str | None:
-        """Messages from the lead waiting for subagent `number`, as one user message."""
+    def take(self, number: int, step: int = 0) -> str | None:
+        """Messages from the lead waiting for subagent `number`, and the wrap-up request once its step budget is
+        used, as one user message."""
         with self.lock:
             pending = self.inbox.pop(number, [])
-        return follow_up(pending) if pending else None
+        parts = ([follow_up(pending)] if pending else []) + ([WRAP_UP] if step == HELPER_STEPS else [])
+        return "\n\n".join(parts) or None
 
     def send(self, number: int, message: str) -> str:
         with self.lock:

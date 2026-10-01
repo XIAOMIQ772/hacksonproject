@@ -485,6 +485,26 @@ class HelperTest(unittest.TestCase):
             roles.loop.run, roles.new_llm = original, original_llm
 
 
+    def test_subagents_are_asked_to_wrap_up_at_their_budget(self):
+        import roles
+        original, original_llm = roles.loop.run, roles.new_llm
+        steps = {}
+
+        def session(llm, system, text, tools, **kwargs):
+            steps.update({n: kwargs["on_step"](n, []) for n in (1, roles.HELPER_STEPS)})
+            return "done"
+        roles.loop.run, roles.new_llm = session, (lambda model=None: FakeLLM())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                helpers = roles.Helpers(Path(tmp), Path(tmp), "engineer", {})
+                helpers.result(helpers.start("review area 1"))
+                helpers.close()
+            self.assertIsNone(steps[1])
+            self.assertEqual(steps[roles.HELPER_STEPS], roles.WRAP_UP)
+        finally:
+            roles.loop.run, roles.new_llm = original, original_llm
+
+
 class TaskNotesTest(unittest.TestCase):
     def test_notes_are_chosen_by_product_name(self):
         import roles
