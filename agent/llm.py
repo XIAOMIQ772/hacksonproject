@@ -4,6 +4,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
+import queue
 import threading
 import time
 from dataclasses import dataclass, field
@@ -124,7 +125,105 @@ EFFORTS = ("low", "high", "max")  # DeepSeek maps medium to high
 # gives up and delivers its current state; credential and quota errors stop immediately.
 RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
 # Replies are streamed; a connection that delivers nothing for this long is dropped and the request retried.
-IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "90"))
+IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "60"))
+# Platform latency swings widely, and a request that is stuck before its first token usually stays stuck. When no
+# token (reasoning, answer or tool call) has arrived HEDGE_SECONDS after sending, the same request is sent once
+# more and whichever stream produces a token first is used; the other is closed. When neither has produced one
+# after FIRST_TOKEN_SECONDS, both are dropped and the request is retried at once.
+HEDGE_SECONDS = float(os.environ.get("AGENT_HEDGE_SECONDS", "12"))
+FIRST_TOKEN_SECONDS = float(os.environ.get("AGENT_FIRST_TOKEN_SECONDS", "30"))
+
+
+class FirstTokenTimeout(TimeoutError):
+    pass
+
+
+def _has_token(chunk) -> bool:
+    for choice in getattr(chunk, "choices", None) or []:
+        delta = choice.delta
+        if delta.content or delta.tool_calls or getattr(delta, "reasoning_content", None) \
+                or (delta.model_extra or {}).get("reasoning_content"):
+            return True
+    return False
+
+
+class _Stream:
+    """One request, read in a background thread into a queue; `abandon()` makes the thread close it."""
+    END = object()
+
+    def __init__(self, open_stream):
+        self.chunks: queue.Queue = queue.Queue()
+        self.abandoned = threading.Event()
+        threading.Thread(target=self._read, args=(open_stream,), daemon=True).start()
+
+    def _read(self, open_stream) -> None:
+        try:
+            stream = open_stream()
+            for chunk in stream:
+                if self.abandoned.is_set():
+                    break
+                self.chunks.put(chunk)
+            stream.close()
+            self.chunks.put(self.END)
+        except Exception as error:
+            self.chunks.put(error)
+
+    def abandon(self) -> None:
+        self.abandoned.set()
+
+
+def paced(open_stream, timing: dict, on_hedge=None):
+    """The chunks of one streamed request (see HEDGE_SECONDS). Raises FirstTokenTimeout when no stream produced a
+    token in FIRST_TOKEN_SECONDS, TimeoutError when the chosen stream then stalls for IDLE_SECONDS, and the
+    error of the request when every stream failed."""
+    streams = [_Stream(open_stream)]
+    chosen, held = None, []  # chunks without a token (role headers) seen before a stream was chosen
+    try:
+        while chosen is None:
+            now = time.time()
+            if now >= timing["sent"] + FIRST_TOKEN_SECONDS:
+                raise FirstTokenTimeout(f"no token after {FIRST_TOKEN_SECONDS:.0f}s")
+            if len(streams) == 1 and now >= timing["sent"] + HEDGE_SECONDS and not streams[0].abandoned.is_set():
+                streams.append(_Stream(open_stream))
+                if on_hedge:
+                    on_hedge()
+            progressed = False
+            for stream in list(streams):
+                try:
+                    item = stream.chunks.get_nowait()
+                except queue.Empty:
+                    continue
+                progressed = True
+                if isinstance(item, BaseException):
+                    stream.abandon()
+                    streams.remove(stream)
+                    if not streams:
+                        raise item
+                elif item is _Stream.END or _has_token(item):
+                    chosen = stream
+                    held.append(item)
+                    break
+                elif stream is streams[0]:
+                    held.append(item)
+            if not progressed:
+                time.sleep(0.05)
+        for item in held:
+            if item is _Stream.END:
+                return
+            yield item
+        while True:
+            try:
+                item = chosen.chunks.get(timeout=IDLE_SECONDS)
+            except queue.Empty:
+                raise TimeoutError(f"no data for {IDLE_SECONDS}s") from None
+            if item is _Stream.END:
+                return
+            if isinstance(item, BaseException):
+                raise item
+            yield item
+    finally:
+        for stream in streams:
+            stream.abandon()
 
 
 class LLM:
@@ -184,8 +283,9 @@ class LLM:
                          sent=timing["sent"], phase="connecting", attempt=attempt, chars=0, ttft=None,
                          reasoning="", answer="")
             try:
-                stream = self.client.chat.completions.create(**request)
                 _live_update(key, force=True, phase="waiting")
+                stream = paced(lambda: self.client.chat.completions.create(**request), timing,
+                               on_hedge=lambda: _live_update(key, force=True, phase="hedged"))
                 message, finish, usage = self._receive(stream, progress)
                 break
             except APIStatusError as error:
@@ -202,7 +302,8 @@ class LLM:
                 retry = error
             if time.time() - started > RETRY_SECONDS:  # an outage, not a network hiccup
                 raise FatalModelError(f"model unavailable for {RETRY_SECONDS}s: {retry}")
-            wait = min(60, 5 * 2 ** attempt)
+            # a slow first token is the platform's latency, not an outage: send again at once
+            wait = 1 if isinstance(retry, FirstTokenTimeout) else min(60, 5 * 2 ** attempt)
             attempt += 1
             print(f"[llm] {type(retry).__name__}: {str(retry)[:200]}; retry in {wait}s", flush=True)
             _live_update(key, force=True, phase="retrying", error=f"{type(retry).__name__}: {str(retry)[:160]}",
