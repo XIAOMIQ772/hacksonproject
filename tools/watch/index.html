@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Watch</title>
+<style>
+  :root {
+    --bg: #ffffff; --side: #f7f7f8; --text: #202123; --muted: #6e6e80; --line: #e5e5e5; --code: #f6f6f7;
+    --accent: #2563eb; --pass: #16a34a; --fail: #dc2626; --warn: #b7791f; --add: #e6f6ea; --del: #fdecec;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1e1e20; --side: #252528; --text: #ececf1; --muted: #9a9aa6; --line: #34343a; --code: #2a2a2e;
+            --accent: #7aa2ff; --pass: #4ade80; --fail: #f87171; --warn: #e0b040; --add: #1f3a2a; --del: #3d2224; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14.5px/1.6 -apple-system, "PingFang SC", system-ui, sans-serif;
+         display: grid; grid-template-columns: 1fr 340px; }
+  @media (max-width: 1000px) { body { grid-template-columns: 1fr; } aside { display: none; } }
+
+  #chat { height: 100vh; overflow-y: auto; }
+  .thread { max-width: 860px; margin: 0 auto; padding: 24px 24px 120px; }
+  .top { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 24px; z-index: 2;
+         display: flex; gap: 12px; align-items: center; }
+  .top b { font-size: 15px; }
+  .pill { font-size: 12px; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .pill.run { color: var(--accent); border-color: var(--accent); } .pill.done { color: var(--pass); border-color: var(--pass); }
+  .pill.err { color: var(--fail); border-color: var(--fail); }
+
+  .msg { margin: 18px 0; }
+  .user { display: flex; justify-content: flex-end; }
+  .bubble { background: var(--side); border-radius: 16px; padding: 10px 14px; max-width: 85%; white-space: pre-wrap; word-break: break-word; }
+  .note { color: var(--muted); font-size: 13px; border-left: 3px solid var(--line); padding: 2px 0 2px 12px; white-space: pre-wrap; word-break: break-word; }
+  .note.sub { border-color: var(--warn); color: var(--text); }
+  .text { white-space: pre-wrap; word-break: break-word; }
+  .step { color: var(--muted); font-size: 11.5px; font-family: var(--mono); margin: 22px 0 4px; display: flex; align-items: center; gap: 8px; }
+  .step::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+
+  details { margin: 4px 0; }
+  details > summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: baseline; padding: 3px 0; color: var(--text); }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "›"; color: var(--muted); display: inline-block; width: 10px; transition: transform .15s; }
+  details[open] > summary::before { transform: rotate(90deg); }
+  .verb { color: var(--muted); flex: none; }
+  .obj { font-family: var(--mono); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tag { font-size: 11.5px; padding: 0 7px; border-radius: 4px; flex: none; }
+  .tag.ok { color: var(--pass); background: color-mix(in srgb, var(--pass) 12%, transparent); }
+  .tag.bad { color: var(--fail); background: color-mix(in srgb, var(--fail) 12%, transparent); }
+  .tag.wait { color: var(--muted); background: var(--code); }
+  pre.out { margin: 4px 0 8px 18px; background: var(--code); border-radius: 8px; padding: 10px 12px; font: 12px/1.5 var(--mono);
+            white-space: pre-wrap; word-break: break-word; max-height: 360px; overflow: auto; }
+  .diff { margin: 4px 0 8px 18px; border-radius: 8px; overflow: hidden; font: 12px/1.5 var(--mono); }
+  .diff div { padding: 1px 10px; white-space: pre-wrap; word-break: break-word; }
+  .diff .d { background: var(--del); } .diff .a { background: var(--add); }
+  .think { color: var(--muted); font-size: 13px; }
+  .think pre { margin: 4px 0 6px 18px; white-space: pre-wrap; word-break: break-word; font: inherit; }
+  .compact { text-align: center; color: var(--muted); font-size: 12px; margin: 26px 0; }
+  .compact::before, .compact::after { content: " ── "; }
+  .live { margin-top: 18px; }
+  .live .head { color: var(--muted); font-size: 12px; font-family: var(--mono); display: flex; gap: 8px; align-items: center; }
+  .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite; }
+  .live .think { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: hidden;
+                 display: flex; flex-direction: column-reverse; }
+  .live .ans { margin-top: 6px; white-space: pre-wrap; word-break: break-word; font: 12px/1.5 var(--mono); }
+  .live .caret::after { content: "▍"; animation: blink 1s infinite; color: var(--accent); }
+  @keyframes blink { 50% { opacity: .3; } }
+
+  aside { background: var(--side); border-left: 1px solid var(--line); height: 100vh; overflow-y: auto; padding: 16px; font-size: 13px; }
+  aside h3 { font-size: 12px; color: var(--muted); font-weight: 600; margin: 18px 0 8px; }
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kv > div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  .kv b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .kv span { color: var(--muted); font-size: 11.5px; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; background: var(--pass); }
+  .req { display: flex; gap: 6px; align-items: center; padding: 2px 0; min-width: 0; }
+  .req i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line); }
+  .req.pass i { background: var(--pass); } .req.fail i { background: var(--fail); } .req.planned i { background: var(--warn); }
+  .req code { color: var(--muted); font-size: 11.5px; flex: none; }
+  .req span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .agent { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; }
+  .agent p { margin: 2px 0 0; color: var(--muted); font-size: 12px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .fails { margin: 4px 0 0; padding-left: 16px; color: var(--fail); font: 11.5px/1.5 var(--mono); }
+  .muted { color: var(--muted); }
+  .llm { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; }
+  .llm .ph { font-weight: 600; } .llm .ph.connecting, .llm .ph.waiting { color: var(--muted); }
+  .llm .ph.reasoning { color: var(--warn); } .llm .ph.answering { color: var(--pass); } .llm .ph.retrying { color: var(--fail); }
+  .llm small { display: block; color: var(--muted); font-variant-numeric: tabular-nums; }
+  table.calls { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  table.calls td, table.calls th { padding: 2px 4px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.calls td:first-child, table.calls th:first-child { text-align: left; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+  table.calls th { color: var(--muted); font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="chat">
+  <div class="top"><b id="name">Agent</b><span id="status" class="pill">…</span><span id="sub" class="muted"></span><span id="now" class="muted" style="margin-left:auto"></span></div>
+  <div class="thread" id="thread"></div>
+</div>
+<aside><div id="llm"></div><div id="side"></div></aside>
+<script>
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : String(n);
+const dur = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h}h ${m}m` : `${m}m ${s % 60}s`; };
+const parse = (t) => { try { return JSON.parse(t || "{}"); } catch { return { raw: t }; } };
+const short = (t, n = 140) => { t = String(t ?? ""); return t.length > n ? t.slice(0, n) + "…" : t; };
+
+const chat = document.getElementById("chat"), thread = document.getElementById("thread");
+let next = 0, step = 0, pending = {}, live = null;
+
+function stick(fn) {  // keep following the bottom only when the reader is already there
+  const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
+  fn();
+  if (atBottom) chat.scrollTop = chat.scrollHeight;
+}
+
+function toolHead(name, a) {
+  switch (name) {
+    case "bash": return ["运行", a.command];
+    case "read": return ["读取", a.path + (a.offset ? ` (${a.offset}…)` : "")];
+    case "write": return ["写入", a.path];
+    case "edit": return ["编辑", a.path];
+    case "apply": return ["修改", (a.changes || []).map((c) => c.path).filter((p, i, all) => all.indexOf(p) === i).join(", ")];
+    case "check": return ["测试", a.pattern || "全部用例"];
+    case "requirement": return ["查看需求", (a.ids || []).join(", ")];
+    case "subagent": return ["派出子 agent", short(a.task, 120)];
+    case "wait_subagent": return ["等待子 agent", "#" + a.id];
+    case "done": return ["完成", ""];
+    default: return [name, short(JSON.stringify(a), 120)];
+  }
+}
+
+function toolBody(name, a) {
+  if (name === "edit") return `<div class="diff">${(a.old_text || "").split("\n").map((l) => `<div class="d">- ${esc(l)}</div>`).join("")}${(a.new_text || "").split("\n").map((l) => `<div class="a">+ ${esc(l)}</div>`).join("")}</div>`;
+  if (name === "write") return `<pre class="out">${esc(a.content)}</pre>`;
+  if (name === "apply") return (a.changes || []).map((c) => c.content != null
+    ? `<div class="muted" style="margin-left:18px">${esc(c.path)}（整文件）</div><pre class="out">${esc(c.content)}</pre>`
+    : `<div class="muted" style="margin-left:18px">${esc(c.path)}</div><div class="diff">${(c.old_text || "").split("\n").map((l) => `<div class="d">- ${esc(l)}</div>`).join("")}${(c.new_text || "").split("\n").map((l) => `<div class="a">+ ${esc(l)}</div>`).join("")}</div>`).join("");
+  if (name === "subagent") return `<pre class="out">${esc(a.task)}${a.reasoning_effort ? `\n\n推理档位：${esc(a.reasoning_effort)}` : ""}${a.fork_context ? "\n继承上下文" : ""}</pre>`;
+  return "";
+}
+
+function tag(name, result) {
+  if (result == null) return `<span class="tag wait">进行中</span>`;
+  if (name === "check") { const m = /e2e (\d+)\/(\d+)/.exec(result); const ok = result.startsWith("CHECK PASSED");
+    return `<span class="tag ${ok ? "ok" : "bad"}">${m ? m[1] + "/" + m[2] : ok ? "通过" : "失败"}</span>`; }
+  if (/^ERROR|\[exit [1-9]|\[killed/.test(result)) return `<span class="tag bad">出错</span>`;
+  return "";
+}
+
+function renderCall(call) {
+  const a = parse(call.function.arguments), [verb, obj] = toolHead(call.function.name, a);
+  const el = document.createElement("details");
+  el.dataset.call = call.id; el.dataset.name = call.function.name;
+  el.innerHTML = `<summary><span class="verb">${verb}</span><span class="obj">${esc(obj)}</span><span class="t">${tag(call.function.name, null)}</span></summary>${toolBody(call.function.name, a)}<div class="res"></div>`;
+  pending[call.id] = el;
+  return el;
+}
+
+function attachResult(m) {
+  const el = pending[m.tool_call_id]; if (!el) return;
+  delete pending[m.tool_call_id];
+  const name = el.dataset.name, text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+  el.querySelector(".t").innerHTML = tag(name, text);
+  if (name !== "edit" && name !== "write" && name !== "apply" || /^ERROR/.test(text))
+    el.querySelector(".res").innerHTML = `<pre class="out">${esc(text)}</pre>`;
+  if (name === "check" && !text.startsWith("CHECK PASSED")) el.open = true;
+}
+
+function add(html, cls) { const d = document.createElement("div"); d.className = "msg " + (cls || ""); d.innerHTML = html; thread.append(d); return d; }
+
+function render(item) {
+  if (item.kind === "compaction") { add(`上下文已压缩${item.summary ? "" : ""}`, "compact"); return; }
+  const m = item.message;
+  if (m.role === "tool") { attachResult(m); return; }
+  if (m.role === "user") {
+    const text = typeof m.content === "string" ? m.content : (m.content || []).map((p) => p.text || "[图片]").join(" ");
+    if (item.i === 0 || /^Build the product|^Continue building/.test(text))
+      add(`<details><summary><span class="verb">任务</span><span class="obj">${esc(short(text, 90))}</span></summary><pre class="out">${esc(text)}</pre></details>`, "user");
+    else if (/^Subagent \d+ finished/.test(text))
+      add(`<details open><summary><span class="verb">子 agent 结果</span><span class="obj">${esc(short(text.split("\n")[0], 100))}</span></summary><pre class="out">${esc(text)}</pre></details>`, "note sub");
+    else if (/^\[Handover summary/.test(text))
+      add(`<details><summary><span class="verb">交接摘要</span><span class="obj">压缩后继续工作的依据</span></summary><pre class="out">${esc(text)}</pre></details>`, "note");
+    else add(esc(text), "note");
+    return;
+  }
+  if (m.role === "assistant") {
+    step += 1;
+    add(`第 ${step} 步`, "step");
+    const d = add("", "");
+    if (m.reasoning_content) d.insertAdjacentHTML("beforeend", `<details class="think"><summary>思考</summary><pre>${esc(m.reasoning_content)}</pre></details>`);
+    if (m.content) d.insertAdjacentHTML("beforeend", `<div class="text">${esc(m.content)}</div>`);
+    for (const call of m.tool_calls || []) d.append(renderCall(call));
+  }
+}
+
+async function pullTranscript() {
+  const data = await (await fetch(`/api/transcript?from=${next}`, { cache: "no-store" })).json();
+  if (data.next < next) { thread.innerHTML = ""; next = 0; step = 0; pending = {}; return pullTranscript(); }  // a new run
+  next = data.next;
+  if (data.items.length) stick(() => { const was = live?.isConnected; live?.remove(); data.items.forEach(render); if (was) thread.append(live); });
+}
+
+function side(d) {
+  const reqs = d.requirements, ok = reqs.filter((r) => r.state === "pass").length, w = d.whole;
+  const end = d.finished ? d.updated : d.now;
+  const status = d.error ? ["err", "模型不可用"] : d.finished ? ["done", "已结束"] : d.now - d.updated < 600 ? ["run", "运行中"] : ["", "10 分钟无输出"];
+  document.getElementById("name").textContent = d.name;
+  const pill = document.getElementById("status"); pill.className = "pill " + status[0]; pill.textContent = status[1];
+  document.getElementById("sub").textContent = `第 ${d.step} 步 · ${d.started ? dur(end - d.started) : "—"}`;
+  const roles = Object.entries(d.usage.roles).map(([r, v]) => `<div><span>${{ engineer: "主 agent", subagent: "子 agent", vision: "看图" }[r] || r}</span><b>${num(v.prompt + v.completion)}</b><span>${v.calls} 次 · 缓存 ${v.prompt ? Math.round(v.cached / v.prompt * 100) : 0}%</span></div>`).join("");
+  document.getElementById("side").innerHTML = `
+    <div class="kv">
+      <div><span>需求通过</span><b>${ok}/${reqs.length}</b><div class="bar"><i style="width:${reqs.length ? ok / reqs.length * 100 : 0}%"></i></div></div>
+      <div><span>全量测试</span><b>${w ? w.passed + "/" + w.total : "—"}</b><div class="bar"><i style="width:${w && w.total ? w.passed / w.total * 100 : 0}%"></i></div></div>
+      <div><span>估算花费</span><b>¥${d.usage.cost}</b><span>${num(d.usage.tokens)} token</span></div>
+      <div><span>压缩 / 用例</span><b>${d.compactions} / ${d.tests}</b></div>
+    </div>
+    ${w && w.failed.length ? `<h3>最近全量 check 的失败用例（第 ${w.step} 步）</h3><ol class="fails">${w.failed.map((t) => `<li>${esc(t)}</li>`).join("")}</ol>` : ""}
+    <h3>需求</h3>${reqs.map((r) => `<div class="req ${r.state}" title="${esc(r.name)}"><i></i><code>${esc(r.id)}</code><span>${esc(r.name)}</span></div>`).join("")}
+    <h3>子 agent</h3>${d.subagents.map((a) => `<div class="agent"><b>#${a.n}</b> <span class="muted">${a.state === "done" ? "完成" : "运行中"} · ${a.steps} 步</span><p>${esc(a.task)}</p></div>`).join("") || `<div class="muted">暂无</div>`}
+    <h3>Token</h3><div class="kv">${roles}</div>`;
+}
+
+const PHASE = { connecting: "连接中", waiting: "等待首 token", reasoning: "思考中", answering: "输出中", retrying: "重试中" };
+const fmt = (v, unit = "") => v == null ? "—" : `${v}${unit}`;
+
+async function tickLlm() {
+  try { const d = await (await fetch("/api/llm", { cache: "no-store" })).json(); renderLlm(d); renderLive(d); }
+  catch (e) { /* the state poll reports a lost connection */ }
+}
+
+function renderLive(d) {  // the lead engineer's reply while it streams, as the last item of the chat
+  const r = d.requests.find((x) => x.label === "engineer");
+  if (!r) { if (live) { live.remove(); live = null; } return; }
+  if (!live) { live = document.createElement("div"); live.className = "live"; }
+  const ph = PHASE[r.phase] || r.phase;
+  stick(() => {
+    live.innerHTML = `<div class="head"><span class="dot"></span>${ph} · ${r.elapsed}s${r.ttft != null ? ` · TTFT ${r.ttft}s` : ""}${r.tps ? ` · ${r.tps} tok/s` : ""}${r.error ? ` · <span style="color:var(--fail)">${esc(r.error)}</span>` : ""}</div>
+      ${r.reasoning ? `<div class="think"><div class="${r.answer ? "" : "caret"}">${esc(r.reasoning)}</div></div>` : ""}
+      ${r.answer ? `<div class="ans caret">${esc(r.answer)}</div>` : ""}`;
+    if (!live.isConnected) thread.append(live);
+  });
+}
+
+function renderLlm(d) {
+  {
+    const reqs = d.requests.map((r) => `<div class="llm"><span class="ph ${r.phase}">${PHASE[r.phase] || r.phase}</span>
+      <span class="muted"> · ${esc(r.label)}${r.effort ? " · " + esc(r.effort) : ""}</span>
+      <small>已 ${r.elapsed}s${r.attempt ? ` · 第 ${r.attempt + 1} 次尝试` : ""} · TTFT ${fmt(r.ttft, "s")} · 已出约 ${r.tokens} token · ${fmt(r.tps, " tok/s")}</small>
+      ${r.error ? `<small style="color:var(--fail)">${esc(r.error)}${r.retry_in != null ? `，${r.retry_in}s 后重试` : ""}</small>` : ""}</div>`).join("");
+    const calls = d.calls.map((c) => `<tr><td title="${esc(c.label)}">${esc(c.label)}</td><td>${fmt(c.ttft, "s")}</td><td>${fmt(c.tps)}</td><td>${fmt(c.seconds, "s")}</td><td>${fmt(c.reasoning)}/${fmt(c.completion)}</td></tr>`).join("");
+    document.getElementById("llm").innerHTML = `
+      <h3 style="margin-top:0">LLM 请求</h3>
+      <div class="kv">
+        <div><span>当前并发</span><b>${d.concurrency}</b><span>峰值 ${d.peak}</span></div>
+        <div><span>TTFT p50 / p90</span><b>${fmt(d.ttft.p50, "s")}</b><span>p90 ${fmt(d.ttft.p90, "s")}</span></div>
+        <div><span>TPS p50</span><b>${fmt(d.tps.p50)}</b><span>p10 ${fmt(d.tps.p10)} tok/s</span></div>
+        <div><span>统计样本</span><b>${d.measured}</b><span>最近带计时的调用</span></div>
+      </div>
+      ${reqs ? `<h3>进行中</h3>${reqs}` : `<p class="muted">当前没有进行中的请求</p>`}
+      <h3>最近调用</h3><table class="calls"><tr><th>会话</th><th>TTFT</th><th>TPS</th><th>耗时</th><th>推理/输出</th></tr>${calls}</table>`;
+    const head = d.requests[0];
+    document.getElementById("now").textContent = head ? `LLM：${PHASE[head.phase] || head.phase}${d.concurrency > 1 ? `（${d.concurrency} 个并发）` : ""}` : "";
+  }
+}
+function streamLlm() {  // server-sent events; falls back to polling when the stream drops
+  const source = new EventSource("/api/stream");
+  source.onmessage = (e) => { const d = JSON.parse(e.data); renderLlm(d); renderLive(d); };
+  source.onerror = () => { source.close(); setTimeout(streamLlm, 2000); tickLlm(); };
+}
+streamLlm();
+
+async function tick() {
+  try {
+    await pullTranscript();
+    side(await (await fetch("/api/state", { cache: "no-store" })).json());
+  } catch (e) {
+    const pill = document.getElementById("status"); pill.className = "pill err"; pill.textContent = "连接不到监控服务";
+  }
+}
+tick(); setInterval(tick, 2000);
+</script>
+</body>
+</html>
