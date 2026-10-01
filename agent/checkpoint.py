@@ -29,9 +29,9 @@ def reset(root: Path, sha: str) -> None:
 
 
 class Transcript:
-    def __init__(self, root: Path, label: str):
-        self.root = root
-        self.path = root / AGENT_DIR / f"{label}.jsonl"
+    def __init__(self, root: Path, label: str, commits: bool = True):
+        self.root, self.commits = root, commits  # without commits: a record for reading, not for resuming
+        self.path = root / AGENT_DIR / f"{label.replace(':', '-')}.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def _write(self, record: dict) -> None:
@@ -46,7 +46,7 @@ class Transcript:
         self._write({"type": "compaction", "messages": messages, "state": state})
 
     def checkpoint(self, step: int, count: int, label: str) -> str:
-        sha = commit(self.root, f"{label} step {step}")
+        sha = commit(self.root, f"{label} step {step}") if self.commits else ""
         self._write({"type": "checkpoint", "step": step, "commit": sha, "count": count})
         return sha
 
@@ -118,12 +118,6 @@ class RunState:
     def finish(self, phase: str, sha: str) -> None:
         data = self.data
         data["done"][phase] = sha
-        self._save(data)
-
-    def mark_good(self, sha: str) -> None:
-        """Latest commit whose frontend built and backend started."""
-        data = self.data
-        data["good"] = sha
         self._save(data)
 
     def forget_from(self, phases: list[str], phase: str) -> None:

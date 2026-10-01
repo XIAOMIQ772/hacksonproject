@@ -39,7 +39,7 @@ Treat the requirements as a contract verified by end-to-end browser tests. The r
 16. Text entry: Enter commits, Escape cancels and restores, blur commits.
 17. Handle real `copy`/`cut`/`paste` events with the system clipboard as plain text (tab-separated columns, newline-separated rows). Cut then paste moves: the source is cleared after a successful paste.
 18. File upload uses a labelled `<input type="file">`; downloads use a Blob and an `<a download="name.ext">`.
-19. No transitions, animations, skeletons or deferred rendering; keep the router setting in `frontend/src/main.tsx` that commits navigations immediately.
+19. No transitions, animations, skeletons or deferred rendering; keep the router setting in `frontend/src/main.tsx` that commits navigations immediately, and its error reporter, which makes `check` list errors thrown in the page.
 
 ## Data
 20. All data lives in the backend database. UI state the requirements ask to keep (active tab, selection, filters, sort) is saved on the server too.

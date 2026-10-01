@@ -20,14 +20,15 @@ SCHEMAS = [
     {"name": "write", "description": "Create or overwrite a file with the full content.",
      "parameters": {"type": "object", "properties": {
          "path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
-    {"name": "edit", "description": "Replace one exact, unique occurrence of old_text with new_text.",
+    {"name": "edit", "description": "Replace one exact, unique occurrence of old_text with new_text. For "
+     "several changes use apply.",
      "parameters": {"type": "object", "properties": {
          "path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}},
          "required": ["path", "old_text", "new_text"]}},
     {"name": "apply", "description": "Make several file changes in one call: each change either writes a "
-     "whole file (path, content) or replaces one exact, unique occurrence (path, old_text, new_text). All "
-     "changes are checked first and nothing is written if any of them fails; changes to the same file apply "
-     "in order.",
+     "whole file (path, content) or replaces one exact, unique occurrence (path, old_text, new_text). "
+     "Changes to the same file apply in order. A file with a change that cannot be applied is left unchanged "
+     "and reported; the other files are written.",
      "parameters": {"type": "object", "properties": {"changes": {"type": "array", "items": {
          "type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"},
                                           "old_text": {"type": "string"}, "new_text": {"type": "string"}},
@@ -51,7 +52,7 @@ class Tools:
     def __init__(self, root: Path, readable: list[Path] | None = None, read_only: bool = False):
         self.root = root.resolve()
         self.readable = [self.root, *[p.resolve() for p in readable or []]]
-        self.read_only = read_only  # reviewers: only read and read-only shell commands
+        self.read_only = read_only  # only read and read-only shell commands
 
     @property
     def schemas(self) -> list[dict]:
@@ -76,6 +77,9 @@ class Tools:
                 return ("ERROR: this session is read-only; use read and read-only shell commands (git diff/show/"
                         "log, grep, ls, cat, sed -n) without redirection")
             return getattr(self, f"_{name}")(**args)
+        except TypeError as error:  # arguments that do not match the schema, e.g. apply without changes[]
+            schema = next((s["parameters"] for s in SCHEMAS if s["name"] == name), {})
+            return f"ERROR: {error}; {name} takes {json.dumps(schema.get('properties', {}))}"
         except Exception as error:  # the model sees every tool failure and decides what to do
             return f"ERROR: {type(error).__name__}: {error}"
 
@@ -104,29 +108,45 @@ class Tools:
         return f"edited {path}"
 
     def _apply(self, changes: list[dict]) -> str:
-        pending: dict[Path, str] = {}  # final text per file, built in memory before anything is written
+        pending: dict[Path, str] = {}  # final text per file; a failed change leaves its file's text as it was
+        failed: list[tuple[Path | None, str]] = []
         for number, change in enumerate(changes, 1):
             path = str(change.get("path", ""))
-            target = self._path(path, write=True)
+            try:
+                target = self._path(path, write=True)
+            except ValueError as error:
+                failed.append((None, f"change {number} ({path}): {error}"))
+                continue
             if "content" in change:
                 pending[target] = str(change["content"])
                 continue
             if "old_text" not in change or "new_text" not in change:
-                return f"ERROR: change {number} ({path}) needs content, or old_text and new_text; nothing written"
+                failed.append((target, f"change {number} ({path}): needs content, or old_text and new_text"))
+                continue
             if target not in pending and not target.is_file():
-                return f"ERROR: change {number}: {path} does not exist; nothing written"
+                failed.append((target, f"change {number}: {path} does not exist"))
+                continue
             text = pending.get(target, target.read_text() if target.is_file() else "")
             count = text.count(change["old_text"])
             if count != 1:
-                return (f"ERROR: change {number}: old_text found {count} times in {path}; it must match exactly "
-                        "once; nothing written")
+                failed.append((target, f"change {number} ({path}): old_text found {count} times; it must match "
+                                       "exactly once"))
+                continue
             pending[target] = text.replace(change["old_text"], change["new_text"])
+        broken = {target for target, _ in failed}  # a file with a failed change keeps its old text whole
         for target, text in pending.items():
+            if target in broken:
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             tmp = target.with_name(target.name + ".tmp")
             tmp.write_text(text)
             tmp.replace(target)
-        return "applied: " + ", ".join(str(t.relative_to(self.root)) for t in pending)
+        written = ", ".join(str(t.relative_to(self.root)) for t in pending if t not in broken) or "nothing"
+        if failed:
+            return (f"ERROR: {len(failed)} of {len(changes)} changes failed; files with a failed change were left "
+                    f"unchanged, the other files were written ({written}). Resend every change to these files:\n"
+                    + "\n".join(f"- {f}" for _, f in failed))
+        return f"applied: {written}"
 
     def _bash(self, command: str, timeout: int = 180) -> str:
         return shell(command, self.root, min(max(timeout, 1), 600))

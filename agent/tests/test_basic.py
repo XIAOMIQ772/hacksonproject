@@ -36,7 +36,7 @@ class PromptTest(unittest.TestCase):
     def test_system_prompt_renders(self):
         import main
         self.assertIn("exact: true", main.SYSTEM)
-        self.assertIn("test-driven", main.SYSTEM)
+        self.assertIn("small verified slices", main.SYSTEM)
 
 
 class SpecTest(unittest.TestCase):
@@ -48,8 +48,22 @@ class SpecTest(unittest.TestCase):
         self.assertEqual([g.id for g in groups], ["REQ-1"])
         card = spec.group_card(groups[0])
         self.assertIn('"Rename"; "Rename item"', card)
-        self.assertIn("Scenario (x2)", card)
+        self.assertIn("(same as above)", card)
         self.assertIn("Acceptance scenarios: 2", card)
+
+    def test_card_drops_template_sentences_and_keeps_values(self):
+        template = "Every value is entered through a visible, labelled control and nothing else is assumed."
+        root = spec.Node("ROOT", "P", "FOLDER", children=[spec.Node(f"R-{i}", "A", "ATOMIC", "d", [
+            {"steps": [{"keyword": "GIVEN", "content": "The seed contains `v1.0` and `README.md`. " + template},
+                       {"keyword": "THEN", "content": f"Shows `alice.dev@example.test` for {i}. " + template}]}])
+            for i in range(3)])
+        common = frozenset(spec.boilerplate(root))
+        self.assertEqual(common, {template})
+        card = spec.card(root.atomics[0], "", common)
+        for value in ("`v1.0`", "`README.md`", "`alice.dev@example.test`"):
+            self.assertIn(value, card)
+        self.assertNotIn(template, card)
+        self.assertIn(template, spec.outline(root))
 
 
 class ToolsTest(unittest.TestCase):
@@ -253,14 +267,20 @@ class ParallelReadTest(unittest.TestCase):
 
 
 class HarnessSpeedTest(unittest.TestCase):
-    def test_apply_is_all_or_nothing(self):
+    def test_apply_writes_good_changes_and_reports_failed_ones(self):
         with tempfile.TemporaryDirectory() as tmp:
             tools, root = Tools(Path(tmp)), Path(tmp)
             (root / "a.js").write_text("one\ntwo\n")
             bad = tools.run("apply", json.dumps({"changes": [
                 {"path": "new.js", "content": "x"}, {"path": "a.js", "old_text": "missing", "new_text": "y"}]}))
-            self.assertIn("nothing written", bad)
-            self.assertFalse((root / "new.js").exists())
+            self.assertIn("1 of 2 changes failed", bad)
+            self.assertIn("change 2 (a.js)", bad)
+            self.assertEqual((root / "new.js").read_text(), "x")
+            self.assertEqual((root / "a.js").read_text(), "one\ntwo\n")
+            half = tools.run("apply", json.dumps({"changes": [
+                {"path": "a.js", "old_text": "one", "new_text": "1"}, {"path": "a.js", "old_text": "nope", "new_text": "y"}]}))
+            self.assertIn("left unchanged", half)
+            self.assertEqual((root / "a.js").read_text(), "one\ntwo\n")  # never half edited
             ok = tools.run("apply", json.dumps({"changes": [
                 {"path": "new.js", "content": "x"}, {"path": "a.js", "old_text": "one", "new_text": "1"},
                 {"path": "a.js", "old_text": "two", "new_text": "2"}]}))
@@ -283,23 +303,17 @@ class HarnessSpeedTest(unittest.TestCase):
         for command in ("npm test", "sed -i s/a/b/ f", "echo x > f", "git checkout .", "find . -delete"):
             self.assertFalse(is_read_only(command), command)
 
-    def test_set_reasoning_changes_effort(self):
-        llm = FakeLLM()
-        self.assertIn("ERROR", loop.set_reasoning(llm, json.dumps({"level": "max"})))
-        loop.set_reasoning(llm, json.dumps({"level": "high"}))
-        self.assertEqual(llm.effort, "high")
-
     def test_usage_report_groups_by_role(self):
         import llm
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "usage.jsonl"
-            rows = [{"model": "m", "label": "plan", "prompt": 100, "cached": 50, "completion": 10, "reasoning": 5,
-                     "seconds": 1.0}, {"model": "m", "label": "N1:advisor", "prompt": 10, "cached": 0,
+            rows = [{"model": "m", "label": "engineer", "prompt": 100, "cached": 50, "completion": 10, "reasoning": 5,
+                     "seconds": 1.0}, {"model": "m", "label": "engineer:helper1", "prompt": 10, "cached": 0,
                                        "completion": 1, "reasoning": 0, "seconds": 0.5}]
             path.write_text("\n".join(json.dumps(r) for r in rows))
             report = llm.usage_report(path)
-            self.assertIn("role=plan: calls=1 prompt=100 cached=50 (50%)", report)
-            self.assertIn("role=advisor", report)
+            self.assertIn("role=engineer: calls=1 prompt=100 cached=50 (50%)", report)
+            self.assertIn("role=helper", report)
 
     def test_code_map_lists_declarations(self):
         import roles
@@ -315,63 +329,122 @@ class HarnessSpeedTest(unittest.TestCase):
             self.assertNotIn("const x", text)
 
 
-class SchedulingTest(unittest.TestCase):
-    def run_nodes(self, outcomes):
-        """Run Orchestrator.nodes with scripted merge outcomes per node; returns (log of attempts, orchestrator)."""
-        import dag
-        import main
-        import workspace
-        from unittest import mock
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            orchestrator = main.Orchestrator.__new__(main.Orchestrator)
-            orchestrator.root, orchestrator.workers = root, 2
-            orchestrator.run = main.checkpoint.RunState(root)
-            orchestrator.run._save({"done": {"foundation": "f"}, "best": 0, "failing": [], "good": "f"})
-            attempts = []
-            orchestrator.work = lambda node, path, base, note, resume, label: attempts.append((node.id, note)) or "ok"
-            orchestrator.integrate = lambda node: outcomes[node.id].pop(0)
-            nodes = [dag.Node("a", "A", ["R-1"]), dag.Node("b", "B", ["R-2"], ["a"])]
-            with mock.patch.object(workspace, "head", return_value="f"), \
-                    mock.patch.object(workspace, "create", return_value=root), \
-                    mock.patch.object(workspace, "existing", return_value=root), \
-                    mock.patch.object(workspace, "sync", return_value=[]), \
-                    mock.patch.object(workspace, "remove"):
-                orchestrator.nodes(nodes, resume=False)
-            return attempts, orchestrator.run.data
+class MilestoneTest(unittest.TestCase):
+    def test_milestone_compacts_a_long_history_early_and_keeps_the_recent_turns(self):
+        messages = [{"role": "user", "content": "task"}]
+        for i in range(215):  # between the milestone threshold and the regular trigger
+            messages += [{"role": "assistant", "content": "x" * 6000}, {"role": "user", "content": f"r{i}"}]
+        size = compaction.estimate(messages)
+        self.assertTrue(compaction.MILESTONE_TOKENS < size < compaction.TRIGGER_TOKENS)
+        state = {}
+        self.assertIs(compaction.compact(FakeLLM(), "s", [], messages, state), messages)  # no milestone: wait
+        new = compaction.compact(FakeLLM(), "s", [], messages, state, milestone=True)
+        self.assertLess(compaction.estimate(new), compaction.MILESTONE_KEEP_TOKENS + 10000)
+        self.assertEqual(new[-1], messages[-1])
 
-    def test_node_continues_while_it_progresses_and_gives_up_when_stalled(self):
-        import main
-        outcomes = {"a": [main.Outcome(False, 3, "f1"), main.Outcome(False, 5, "f2"), main.Outcome(False, 5, "f3"),
-                          main.Outcome(False, 4, "f4")],
-                    "b": [main.Outcome(True, 6, followup="- update stale test")], "b-fix1": [main.Outcome(True, 7)]}
-        attempts, data = self.run_nodes(outcomes)
-        self.assertEqual([a for a, _ in attempts], ["a", "a", "a", "a", "b", "b-fix1"])
-        self.assertEqual(attempts[1][1], "f1")  # the next attempt gets the previous feedback
-        self.assertEqual(data["done"]["a"], "gave-up")  # 3 -> 5 progressed; 5 and 4 did not
-        self.assertEqual(data["extra_nodes"][0]["id"], "b-fix1")
 
-    def test_worktree_sync_brings_in_integration_work(self):
-        import workspace
-        from checkpoint import commit
-        from tools import shell
+class TrimTest(unittest.TestCase):
+    def history(self, turns):
+        messages = [{"role": "user", "content": "task"}]
+        for i in range(turns):
+            path = "once.ts" if i == 0 else "app.ts"  # app.ts is rewritten every turn, once.ts never again
+            args = json.dumps({"path": path, "content": "x" * 5000})
+            messages += [{"role": "assistant", "content": "", "reasoning_content": "r" * 8000,
+                          "tool_calls": [{"id": f"c{i}", "type": "function",
+                                          "function": {"name": "write", "arguments": args}}]},
+                         {"role": "tool", "tool_call_id": f"c{i}", "content": "y" * 8000}]
+        return messages
+
+    def test_short_history_is_untouched(self):
+        messages = self.history(3)
+        self.assertIs(compaction.trim(messages), messages)
+
+    def test_old_turns_are_trimmed_and_recent_kept(self):
+        messages = self.history(40)
+        trimmed = compaction.trim(messages)
+        self.assertEqual(trimmed[0], messages[0])
+        self.assertEqual(trimmed[-4:], messages[-4:])
+        self.assertLess(compaction.estimate(trimmed), compaction.estimate(messages) * 2 // 3)  # reasoning stays
+        self.assertEqual(trimmed[1]["reasoning_content"], "r" * 8000)  # passed back verbatim
+        self.assertEqual(trimmed[1], messages[1])  # once.ts was not changed again: its content stays
+        rewritten = json.loads(trimmed[3]["tool_calls"][0]["function"]["arguments"])
+        self.assertEqual(rewritten["path"], "app.ts")
+        self.assertIn("trimmed", rewritten["content"])  # a later write superseded it
+        self.assertIn("trimmed", trimmed[2]["content"])
+        self.assertIs(compaction.trim(trimmed), trimmed)  # stable until enough new history accumulates
+
+
+class LoadTest(unittest.TestCase):
+    """Whole-suite failures caused by machine load must not count as regressions."""
+
+    def test_confirm_keeps_only_failures_that_repeat(self):
+        failures = ("- a.spec.ts :: slow one\n  Timeout 3000ms exceeded\n- b.spec.ts :: broken\n  not visible\n"
+                    "FLAKY (passed on retry; tests probably share state with parallel tests):\n- c.spec.ts :: x")
+        calls = []
+        original = checks.e2e
+        checks.e2e = lambda root, url, pattern="", config="", workers=4: (
+            calls.append((pattern, workers)) or (0, 2, "- b.spec.ts :: broken\n  not visible"))
+        try:
+            remaining, recovered = checks.confirm(Path("."), "http://x", failures)
+        finally:
+            checks.e2e = original
+        self.assertEqual(recovered, 1)
+        self.assertEqual(checks.failure_names(remaining), ["b.spec.ts :: broken"])
+        self.assertIn("- a.spec.ts :: slow one", remaining.split("FLAKY (failed in the whole-suite run", 1)[1])
+        self.assertIn("- c.spec.ts :: x", remaining)
+        self.assertEqual(calls[0][1], 1)
+        self.assertIn("--max-failures=", calls[0][0])
+
+
+class HelperTest(unittest.TestCase):
+    def test_results_arrive_as_messages_without_waiting(self):
+        import threading
+        import roles
+        release = threading.Event()
+        original = roles.loop.run
+
+        def slow(*args, **kwargs):
+            release.wait(5)
+            return "found it"
+        roles.loop.run = slow
+        original_llm = roles.new_llm
+        roles.new_llm = lambda model=None: FakeLLM()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                helpers = roles.Helpers(Path(tmp), Path(tmp), "engineer", {})
+                number = helpers.start("look into it")
+                self.assertEqual(helpers.finished(), [])  # still running: nothing delivered, nothing blocked
+                release.set()
+                self.assertIn("found it", helpers.result(number))
+                self.assertEqual(helpers.finished(), [])  # delivered once
+                helpers.close()
+        finally:
+            roles.loop.run, roles.new_llm = original, original_llm
+
+
+class ForkTest(unittest.TestCase):
+    def test_fork_keeps_the_prefix_and_answers_every_pending_call(self):
+        import roles
+        messages = [{"role": "user", "content": "task"},
+                    {"role": "assistant", "content": "", "tool_calls": [
+                        {"id": "a", "type": "function", "function": {"name": "read", "arguments": "{}"}},
+                        {"id": "s", "type": "function", "function": {"name": "subagent", "arguments": "{}"}},
+                        {"id": "b", "type": "function", "function": {"name": "check", "arguments": "{}"}}]},
+                    {"role": "tool", "tool_call_id": "a", "content": "file"}]
+        history = roles.forked(messages, "s")
+        self.assertEqual(history[:3], messages)  # the lead's cached prefix is reused unchanged
+        self.assertEqual({m["tool_call_id"] for m in history[2:]}, {"a", "s", "b"})
+        self.assertEqual(len(messages), 3)  # the lead's own conversation is untouched
+
+    def test_subagent_sees_the_same_tools_but_cannot_nest(self):
+        import roles
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            shell("git init -q && git config user.email t@t && git config user.name t", root, 30)
-            (root / ".gitignore").write_text(".agent/\nnode_modules\n")
-            (root / "a.txt").write_text("base\n")
-            base = commit(root, "init")
-            path = workspace.create(root, "n", base)
-            (path / "mine.txt").write_text("node work")
-            (root / "other.txt").write_text("merged by another node")
-            upstream = commit(root, "other")
-            self.assertEqual(workspace.sync(root, "n", upstream), [])
-            self.assertTrue((path / "other.txt").exists() and (path / "mine.txt").exists())
-            (path / "a.txt").write_text("node\n")
-            (root / "a.txt").write_text("upstream\n")
-            self.assertEqual(workspace.sync(root, "n", commit(root, "conflict")), ["a.txt"])
-            self.assertIn("<<<<<<<", (path / "a.txt").read_text())
-            workspace.remove(root, "n")
+            tree = spec.Node("ROOT", "Demo", "FOLDER", "", [], [])
+            engineer = roles.Engineer.__new__(roles.Engineer)
+            engineer.atomics, engineer.tree = {}, tree
+            lead, child = engineer.extras(lead=True), engineer.extras(lead=False)
+            self.assertEqual([e.schema for e in lead.values()], [e.schema for e in child.values()])
+            self.assertIn("only the lead", child["subagent"].run({}, [], "x"))
 
 
 class ReportTest(unittest.TestCase):
@@ -403,73 +476,6 @@ class StreamTest(unittest.TestCase):
         self.assertEqual(message["tool_calls"][0]["id"], "c1")
         self.assertEqual(finish, "tool_calls")
         self.assertEqual(usage.prompt_tokens, 5)
-
-
-class DagTest(unittest.TestCase):
-    def test_parse_reports_coverage_and_cycles(self):
-        import dag
-        ids = ["R-1", "R-2", "R-3"]
-        nodes, problems = dag.parse(json.dumps({"nodes": [
-            {"id": "a", "requirements": ["R-1"]},
-            {"id": "b", "requirements": ["R-2", "R-3"], "depends_on": ["a"]}]}), ids)
-        self.assertEqual(problems, [])
-        self.assertEqual([n.id for n in dag.ready(nodes, set(), set())], ["a"])
-        self.assertEqual([n.id for n in dag.ready(nodes, {"a"}, {"a"})], ["b"])
-        _, problems = dag.parse(json.dumps({"nodes": [
-            {"id": "a", "requirements": ["R-1", "R-9"], "depends_on": ["b"]},
-            {"id": "b", "requirements": ["R-1"], "depends_on": ["a"]}]}), ids)
-        text = "\n".join(problems)
-        self.assertIn("R-9", text)
-        self.assertIn("not assigned", text)
-        self.assertIn("more than one", text)
-        _, problems = dag.parse(json.dumps({"nodes": [
-            {"id": "a", "requirements": ["R-1"], "depends_on": ["b"]},
-            {"id": "b", "requirements": ["R-2", "R-3"], "depends_on": ["a"]}]}), ids)
-        self.assertEqual(problems, ["dependencies contain a cycle"])
-        self.assertTrue(dag.parse("not json", ids)[1])
-
-
-class WorkspaceTest(unittest.TestCase):
-    def test_parallel_branches_merge_and_conflicts_abort(self):
-        import workspace
-        from checkpoint import commit
-        from tools import shell
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            shell("git init -q && git config user.email t@t && git config user.name t", root, 30)
-            (root / ".gitignore").write_text(".agent/\nnode_modules\n")
-            (root / "backend" / "node_modules").mkdir(parents=True)
-            (root / "shared.txt").write_text("base\n")
-            base = commit(root, "init")
-            a, b = workspace.create(root, "a", base), workspace.create(root, "b", base)
-            self.assertTrue((a / "backend" / "node_modules").is_symlink())
-            (a / "a.txt").write_text("a")
-            (b / "b.txt").write_text("b")
-            commit(a, "a")
-            commit(b, "b")
-            self.assertTrue(workspace.merge(root, "a")[0])
-            self.assertTrue(workspace.merge(root, "b")[0])
-            self.assertTrue((root / "a.txt").exists() and (root / "b.txt").exists())
-            c, d = workspace.create(root, "c", workspace.head(root)), workspace.create(root, "d", workspace.head(root))
-            (c / "shared.txt").write_text("c\n")
-            (d / "shared.txt").write_text("d\n")
-            commit(c, "c")
-            commit(d, "d")
-            self.assertTrue(workspace.merge(root, "c")[0])
-            before = workspace.head(root)
-            self.assertFalse(workspace.merge(root, "d")[0])
-            self.assertEqual(workspace.conflicts(root), ["shared.txt"])
-            workspace.abort(root, before)
-            self.assertEqual((root / "shared.txt").read_text(), "c\n")
-            workspace.remove(root, "d")
-            self.assertIsNone(workspace.existing(root, "d"))
-            old = root / "old-place"  # a worktree left elsewhere still holding the branch
-            shell(f"git worktree add -q -B node/c {old} HEAD", root, 30)
-            again = workspace.create(root, "c", workspace.head(root))
-            self.assertTrue((again / "shared.txt").exists())
-            self.assertFalse(old.exists())
-            for node in "abc":  # worktrees live outside the temporary repository
-                workspace.remove(root, node)
 
 
 if __name__ == "__main__":

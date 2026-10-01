@@ -1,18 +1,18 @@
-"""Agent roles: planner, worker (test-driven), advisor (read-only reviewer) and integrator."""
+"""Agent roles: the engineer who builds the app and the helpers it starts in the background."""
 from __future__ import annotations
 
 import os
 import re
+import concurrent.futures as futures
 import threading
 from pathlib import Path
 
 import checkpoint
 import checks
-import dag
 import loop
 import spec
-from llm import LLM
-from tools import Tools, clip, shell
+from llm import EFFORTS, LLM
+from tools import Tools, shell
 
 HERE = Path(__file__).resolve().parent
 RULES = (HERE / "rules.md").read_text()
@@ -22,12 +22,41 @@ _print_lock = threading.Lock()
 
 ENGINEER = f"""You are a senior full-stack engineer working in a git workspace that contains a React (Vite) \
 frontend in frontend/ and an Express + SQLite backend in backend/ (dependencies are installed). Work with \
-the tools read, write, edit, apply, bash, check, set_reasoning and done. Paths are relative to the workspace root. Do not start \
+the tools read, write, edit, apply, bash, check, requirement, subagent, wait_subagent and done. Paths are relative to the workspace root. Do not start \
 servers or browsers yourself; the check tool builds the frontend, starts the backend on a fresh database and \
 runs the Playwright tests in backend/test-e2e.
 
-Be economical: read only files you need, write whole files when creating them, prefer small edits after. \
-Keep code consistent with {PLAN_FILE}.
+## Tool calls
+Every reply re-sends the whole conversation, so the number of replies sets the cost and the time of the build. \
+Parallelize tool calls whenever possible: one reply may contain many tool calls, the read-only ones at its \
+start (read, and shell commands such as cat, sed -n, grep, ls, wc, git show, git diff) run concurrently, and \
+the rest run in order.
+- Gather everything you need in one reply: all the files and searches for the next decision at once, never one \
+read per reply.
+- Write a whole slice in one reply: several write calls or one apply with every edit, followed in the same reply \
+by check.
+- Do not use python scripts to print large chunks of files or requirement text; use read and the requirement \
+tool.
+- Debug through a subagent: when a check fails for a reason you cannot see from the report, or you would \
+otherwise try throwaway scripts (node -e, temporary test files, logging) to find out how your code behaves, \
+start a subagent with the failing test, the error and the files involved, and let it run the experiments in \
+its own context and report the cause and the fix. Keep working on something else meanwhile; every \
+experiment you run yourself stays in your context for the rest of the build.
+
+## Subagents
+Your context is the most valuable resource of this build; a subagent spends its own. Keep one or two \
+subagents busy most of the time, and delegate by default whenever one of these comes up:
+- an area is finished: a subagent reviews it against its requirement ids;
+- you start implementing an area: a subagent drafts the e2e tests of the next area into its spec file;
+- a check fails and the cause is not obvious from the report: a subagent investigates and reports cause and fix;
+- you need to understand more than two or three files you did not just write: a subagent surveys them and \
+reports what you need.
+Do the critical path yourself: the code of the area you are building and the fixes you know how to make.
+Start subagents whose work does not block each other together, as several subagent calls in one reply (for \
+example reviews of every finished area at once), using all free slots; never run them one after another. \
+Before you call wait_subagent, start every other subagent you will need, and keep working while they run.
+
+Read only files you need and keep code consistent with {PLAN_FILE}.
 
 Build exactly what the requirements describe and nothing more (rule 4): tests locate elements by role, name, \
 label and link target, so an extra feature or a second copy of a key element (another link to the same page, \
@@ -38,7 +67,7 @@ a repeated button, a translated duplicate of a label) makes them match twice and
 {SOP}
 
 ## End-to-end tests
-- One Playwright test per scenario, in backend/test-e2e/<node>.spec.ts, using \
+- One Playwright test per scenario, in backend/test-e2e/<area>.spec.ts, using \
 `import {{ test, expect }} from '@playwright/test'` and shared helpers from backend/test-e2e/helpers.ts.
 - Tests start at page.goto('/') in a fresh browser context, use only getByRole/getByLabel/getByText with the \
 exact names from the requirements, act by click/fill/press/paste/setInputFiles, and reload the page to \
@@ -54,92 +83,49 @@ await button.click(); await d;` (same for popups and file choosers).
 - A test that fails must be fixed in the app unless the test contradicts the requirement text.
 """
 
-ADVISOR = f"""You are a staff engineer reviewing another engineer's work on a web app built from a \
-requirements document. You can read files and run read-only shell commands (git diff, git log, grep, ls); \
-never modify files. Be concrete: cite file paths, element names and requirement text. Keep the answer short.
+BUILD_TASK = """Build the product below as one working app in this workspace, end to end.
 
-Check every view the change touches for anything the requirements do not ask for (features, controls, text, \
-links) and for key elements that appear more than once (two links to the same page, repeated buttons, a \
-translated duplicate of a label); both are defects, because tests locate elements by role, name, label and link \
-target and fail when a locator matches twice. Also walk each flow using only the controls the requirement \
-names: a flow must not depend on an input the requirement does not mention (for example a required name field on \
-a page described only by its submit button).
+1. Plan from the outline below, without reading every requirement first: write {plan} (concise) at the level \
+of architecture: data model (tables), seed data, API conventions, pages and URLs, shared UI components, and \
+an ordered list of feature areas, each with its atomic requirement ids. Order the areas so each one builds on \
+finished ones. Leave the details of an area for when you build it.
+2. Build the shared base (schema, seeding, page shells, shared components, backend/test-e2e/helpers.ts with \
+a unique-name helper), then implement the areas in order as the working procedure describes. When you start \
+an area, read its requirements through the requirement tool (all its ids in one call); do not parse \
+requirements.md or requirements.yaml yourself.
+3. Write decisions down: the design you work out for an area (element structure, names, rules, edge cases) \
+goes into {plan} under that area in the same reply as your next tool calls. Reasoning is not kept in the \
+workspace; only files are.
+4. Delegate proactively (see the subagent tool). Your context is the scarcest resource of this long build: \
+everything you read stays in it and makes every later step slower and less focused. Hand to a subagent any \
+work that would pull a lot of text into your context but whose result is short (investigating a failure, \
+reading many files, reviewing an area, reading long requirement text or reference images), and any work that \
+can run in parallel with your next step, such as a later feature area whose files do not overlap yours. \
+Keep the critical path yourself.
+5. When every area is done, run check without a pattern, fix what fails, then call done.
 
-The team follows these rules:
-{RULES}
-
-Finish by calling submit_verdict (approve, issues: specific problems each with its fix, advice: next steps), \
-then done."""
-
-PLANNER_TASK = """Plan the implementation of the product below for a team of engineers who will work in \
-parallel, each on one node of a task graph, in separate git branches that are merged afterwards.
-
-1. Write {plan} (concise) describing the architecture every engineer must follow:
-   - data model (tables), seed data, API conventions, pages and URLs, shared UI components;
-   - extension points that let features be added in separate files so parallel work rarely touches the \
-same file: e.g. one backend route module per feature registered from a directory, one frontend module per \
-feature registered in a single list, table definitions per module;
-   - for every atomic requirement: the page or dialog it lives on and the quoted names it needs.
-2. Call submit_plan with JSON {{"nodes": [{{"id", "title", "requirements": [atomic ids], "depends_on": \
-[node ids], "files": [files the node creates or changes], "notes"}}]}}. Rules: every atomic requirement \
-belongs to exactly one node; a node usually covers one to three closely related requirements; a node that \
-changes behaviour another node builds on depends on it; nodes that would edit the same files should depend \
-on each other; do not include a foundation node (the foundation is built next, from {plan}, before any node).
-
-Do not implement anything yourself.
-
-The workspace currently contains these template files:
-{template}
-
-Requirement files, including reference images, are readable under {req_dir}.
-
-{outline}
-
-## Seed data stated in scenario preconditions
-{seeds}
-
-## Atomic requirements
-{cards}"""
-
-FOUNDATION_TASK = """Build the foundation described in {plan}: database schema and startup seeding, the \
-extension points (route and page registries), routing and page shells, the shared UI components some \
-requirement needs, and backend/test-e2e/helpers.ts with a unique-name helper. Add \
-backend/test-e2e/foundation.spec.ts with one smoke test that opens '/' and checks the main heading. Do not \
-implement feature behaviour that belongs to the task-graph nodes. Run check until it passes, then call done.
-
-## {plan}
-{plan_text}
+Reference images named in the requirements are readable under {req_dir}.
 
 ## Template files (current content)
 {template}
 
-## Task graph (for orientation)
-{graph}
+{outline}
 
-## Product-wide rules from the requirement groups (the shared shell must satisfy them)
-{shared}"""
+## Seed data stated in scenario preconditions
+{seeds}"""
 
-NODE_TASK = """Implement node {id} ("{title}") of the task graph on top of the existing app, following \
-{plan}. You work on your own branch; other engineers implement other nodes in parallel, so stay within this \
-node's scope and prefer the files it owns: {files}. Planner notes: {notes}
-Your checkout is the current directory; read and change files only there (and read the requirement files). \
-Branches of other nodes (node/*) are unfinished work in progress: do not inspect them or depend on them; \
-build on your checkout, and the orchestrator merges finished work.
-
-Write the e2e tests for every scenario of this node's requirements in backend/test-e2e/{id}.spec.ts, \
-implement until check with pattern "{id}.spec" passes, keep earlier features working, then call done. An \
-advisor reviews your work when you call done.
+REFRESH_TASK = """Continue building the product below as one working app in this workspace; your earlier \
+progress is summarised in the next message. Follow {plan}, get requirement text with the requirement tool, \
+delegate sidecar work to subagents, and when every area is done run check without a pattern, fix what fails, \
+then call done.
 
 ## {plan}
 {plan_text}
 
 ## Code map (every source file with its declarations; read a file only when you need its body)
-{outline}
+{outline_code}
 
-## Current content of the files this node owns and the test helpers
-{owned}
-
-{cards}"""
+{outline}"""
 
 
 def log(label: str, text: str) -> None:
@@ -196,186 +182,236 @@ def new_llm(model: str | None = None) -> LLM:
     return SESSIONS[-1]
 
 
-def advisor_llm() -> LLM:
-    advisor = new_llm(os.environ.get("ADVISOR_MODEL") or None)
-    advisor.effort = os.environ.get("ADVISOR_REASONING_EFFORT", "high")  # a wrong verdict costs a whole node
-    return advisor
+MAX_HELPERS = int(os.environ.get("AGENT_HELPERS", "4"))
+
+SUBAGENT = {"name": "subagent", "description": f"""Start a subagent: another engineer with your model and \
+tools who works in the background in this same workspace, so its edits are immediately visible to you. The \
+call returns at once; the subagent's final answer arrives later as a message. Up to {MAX_HELPERS} run at once.
+
+Delegate proactively: if at any point you can parallelize work by handing a task to a subagent, do so when it \
+could save time or improve quality. Delegate also to keep your own context small: a subagent reads the files, \
+logs and requirement text it needs in its own context and returns only its conclusion, while everything you \
+read stays in yours for the rest of the build. First decide what you do yourself right now. Keep the critical path local: the step you are \
+blocked on, and work that is tightly coupled, urgent or too hard to hand over. Delegate concrete, bounded \
+sidecar tasks that materially advance the build and can run while you continue, for example: building a \
+later area that touches files you are not editing, drafting the e2e tests of the next area while you \
+implement the current one, reviewing a finished area against its requirements, investigating a failure \
+(let it read the logs and code and report the root cause and fix), or summarising long requirement text or \
+reference images. Run several \
+independent subagents at once when their files do not overlap.
+
+Designing the task: make it self-contained and name the concrete output you need. State in the task which files it \
+may create or change; keep that set disjoint from what you and other subagents are editing and leave those \
+files alone until it finishes. It cannot start subagents of its own. Do not delegate the same unresolved question twice.
+
+After delegating: do meaningful non-overlapping work at once, and do not redo its task yourself. Call \
+wait_subagent only when your next step is blocked on the result. When a result arrives, review the files it \
+changed before relying on them.""",
+            "parameters": {"type": "object", "properties": {
+                "task": {"type": "string", "description": "Self-contained instructions and the output to report."},
+                "fork_context": {"type": "boolean", "description": "Default false: the subagent starts "
+                                 "with only your task, so write it self-contained (the files, requirement ids and "
+                                 "facts it needs). Set true only when the task cannot be explained without this "
+                                 "conversation; the subagent then carries your whole context."},
+                "reasoning_effort": {"type": "string", "enum": ["low", "high", "max"],
+                                     "description": "Omit to inherit yours: low for mechanical work, max for "
+                                                    "a hard diagnosis."}},
+                "required": ["task"]}}
+WAIT = {"name": "wait_subagent", "description": "Block until a subagent finishes and return its final answer. "
+        "Use only when your next step cannot proceed without it.",
+        "parameters": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}}
+CHECK = {"name": "check", "description": "Build the frontend, start the backend on a fresh database, run the e2e "
+         "tests and the static rule checks. Pass pattern (e.g. 'sort.spec') to run only matching test files; "
+         "omit it to run the whole suite.",
+         "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}}}}
+REQUIREMENT = {"name": "requirement", "description": "Full text of atomic requirements (description, exact UI "
+               "strings, reference images, acceptance scenarios) and the rules of their groups.",
+               "parameters": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
+                              "required": ["ids"]}}
+
+SUBAGENT_ROLE = """You are now subagent {number}, started by the lead engineer for the task below. The lead \
+keeps working in the same workspace, so files may change while you work. {context}Change only the files \
+your task covers: the lead and other subagents edit the rest at the same time. subagent and wait_subagent \
+belong to the lead and are refused. When finished, call done: its summary is delivered to the lead as your final answer, so make \
+it complete and short (findings with file paths and exact names, and every file you changed).
+
+When your task is a review, the hidden tests locate every element by the exact text of the requirements, so \
+compare the user interface with the requirement text character by character and treat every difference as a \
+defect:
+- Accessible names: label text, aria-label, button and link text, headings, tab, menu item and option text \
+must equal the quoted requirement string exactly: same characters, spacing, punctuation and language, with no \
+added words, units, colons, icons-as-text or translations.
+- Alternatives: where the requirement allows several names ("X (also accepts Y)", "X or Y", "X（同时兼容 Y）"), \
+the name must be exactly one of them, never a combination such as "X Y" or "X / Y".
+- Roles and attributes: the element type the requirement names (link or button, native select or custom \
+list, checkbox, password, email), label association (the control is found by its label), default and \
+initial values, option lists and their order, required and disabled states, and URLs.
+- Messages: error, validation, empty-state and confirmation texts, and where they appear.
+- Extras and duplicates: any control, text or link the requirements do not ask for, and any key element that \
+appears twice in one view (a second link to the same page, a repeated button, a translated duplicate).
+- Flows: each flow must work with only the controls and inputs the requirement names.
+Report each defect as file:line, the current text or attribute, and the exact text or attribute the \
+requirement demands, quoting the requirement.
+
+## Task
+{task}"""
 
 
-def advise(root: Path, req_dir: Path, mode: str, context: str, label: str) -> dict:
-    """Read-only review. `mode` is "review" (the worker says it is done), "diagnose" (the worker is stuck) or
-    "judge" (a merge left failing tests)."""
-    ask = {
-        "review": "Review the work below. Approve only if every requirement of the node is implemented with the "
-                  "exact quoted names and roles, errors and persistence behave as required, the tests really "
-                  "assert those names (not weaker substitutes) and isolate their data, no control was added that "
-                  "the requirements do not ask for (especially a second link or button to the same destination "
-                  "or action), and earlier features are not broken.",
-        "diagnose": "The engineer is stuck: the tests have not improved for several checks. Find the root cause "
-                    "from the failure report and the code (it may be the test, the app, or the test setup) and "
-                    "give the next concrete steps. Set approve to false.",
-        "judge": "A node branch was just merged into the integration branch and the full suite is not clean: "
-                 "some tests that passed before now fail, or the node's own tests fail. Decide whether to keep "
-                 "the merge. Compare each failing test with the requirement text: a test whose expectation the "
-                 "requirements no longer support is stale; a test that still matches the requirements shows a "
-                 "real regression. Set approve to true to keep the merge; then list in issues the follow-up "
-                 "fixes another engineer must make (stale tests to update, small gaps), or leave issues empty. "
-                 "Set approve to false to revert when the branch breaks required behaviour; then issues tell "
-                 "the author what to fix.",
-    }[mode]
-    task = (f"{ask}\n\nThe work to review is in the current directory ({root}); stay there. Requirements are "
-            f"readable under {req_dir}. The diff is below: read other files only when you need surrounding code, "
-            f"and batch independent reads in one reply.\n\n{context}")
-    tools = Tools(root, readable=[req_dir], read_only=True)
-    verdict: dict = {}
+class Helpers:
+    """Subagents started with the subagent tool. They never block the lead: results arrive as messages, or on
+    request with wait_subagent."""
 
-    def submit(args: dict) -> str:
-        if not isinstance(args.get("approve"), bool):
-            return "ERROR: approve must be true or false"
-        verdict.update(approve=args["approve"], issues=[str(i) for i in args.get("issues") or []],
-                       advice=str(args.get("advice", "")))
-        return "Verdict recorded. Call done."
-    verdict_tool = loop.Extra({"name": "submit_verdict", "description": "Record the review verdict.",
-                               "parameters": {"type": "object", "properties": {
-                                   "approve": {"type": "boolean"},
-                                   "issues": {"type": "array", "items": {"type": "string"}},
-                                   "advice": {"type": "string"}}, "required": ["approve", "issues"]}}, submit)
-    summary = loop.run(advisor_llm(), ADVISOR, task, tools, extras={"submit_verdict": verdict_tool}, max_steps=15,
-                       on_done=lambda _s: "" if verdict else "Call submit_verdict first.", label=f"{label}:advisor")
-    if not verdict:  # the session ended without a verdict (step limit)
-        verdict = {"approve": {"review": True, "diagnose": False}.get(mode), "issues": [], "advice": summary}
-    log(label, f"advisor {mode}: approve={verdict.get('approve')} issues={len(verdict.get('issues') or [])}")
-    return verdict
+    def __init__(self, root: Path, req_dir: Path, label: str, extras: dict):
+        self.root, self.req_dir, self.label, self.extras = root, req_dir, label, extras
+        self.pool = futures.ThreadPoolExecutor(max_workers=MAX_HELPERS)
+        self.jobs: dict[int, tuple[str, futures.Future]] = {}
+        self.delivered: set[int] = set()
+        # numbering continues after a resume, so labels and transcript files stay unique
+        found = [int(m[1]) for f in (root / checkpoint.AGENT_DIR).glob(f"{label}-helper*.jsonl")
+                 if (m := re.match(rf"{re.escape(label)}-helper(\d+)", f.name))]
+        self.first = max(found, default=0) + 1
 
+    def start(self, task: str, effort: str = "", history: list[dict] | None = None) -> int:
+        number = self.first + len(self.jobs)
+        label = f"{self.label}:helper{number}"
+        llm = new_llm()
+        if effort in EFFORTS:
+            llm.effort = effort
+        context = "You have the conversation so far; everything after it is your own work. " if history else ""
+        text = SUBAGENT_ROLE.format(number=number, context=context, task=task)
+        tools = Tools(self.root, readable=[self.req_dir])
+        future = self.pool.submit(loop.run, llm, ENGINEER, text, tools, extras=self.extras, max_steps=20,
+                                  hard_limit=60, label=label, history=history,
+                                  transcript=checkpoint.Transcript(self.root, label, commits=False))
+        self.jobs[number] = (task, future)
+        log(label, f"started{' (forked)' if history else ''}: {task[:200]}")
+        return number
 
-def feedback(verdict: dict) -> str:
-    issues = "\n".join(f"- {i}" for i in verdict.get("issues") or [])
-    return f"Advisor feedback:\n{issues}\n{verdict.get('advice', '')}".strip()
+    def result(self, number: int) -> str:
+        task, future = self.jobs[number]
+        self.delivered.add(number)
+        try:
+            summary = future.result()
+        except Exception as error:  # the lead decides what to do without it
+            summary = f"failed: {type(error).__name__}: {error}"
+        return f"Subagent {number} finished (task: {task[:160]}). Final answer:\n{summary}"
 
+    def finished(self) -> list[str]:
+        """Results that arrived since the last call."""
+        ready = [n for n, (_, f) in self.jobs.items() if f.done() and n not in self.delivered]
+        return [self.result(n) for n in ready]
 
-UNCHECKED_LIMIT = 12
+    def running(self) -> list[int]:
+        return [n for n, (_, f) in self.jobs.items() if not f.done()]
+
+    def close(self) -> None:
+        self.pool.shutdown(wait=False, cancel_futures=True)
 
 
-class Worker:
-    """A test-driven engineering session with a check tool, advisor review on done and help when stuck."""
+def forked(messages: list[dict], call_id: str) -> list[dict]:
+    """The conversation up to the subagent call, with a result for every call of that reply, so a forked
+    session starts from a valid history that shares the lead's cached prefix."""
+    history = list(messages)
+    last = max(i for i, m in enumerate(history) if m["role"] == "assistant")
+    answered = {m.get("tool_call_id") for m in history[last:] if m["role"] == "tool"}
+    for call in history[last].get("tool_calls") or []:
+        if call["id"] not in answered:
+            history.append({"role": "tool", "tool_call_id": call["id"], "content":
+                            "started you as a subagent" if call["id"] == call_id else "(handled by the lead)"})
+    return history
 
-    def __init__(self, llm: LLM, root: Path, req_dir: Path, label: str, pattern: str, cards: str, steps: int,
-                 base: str, reviews: int = 2, stuck_after: int = 3, task_builder=None):
-        self.llm, self.root, self.req_dir, self.label = llm, root, req_dir, label
-        self.pattern, self.cards, self.steps = pattern, cards, steps
-        self.reviews_left, self.diagnoses_left, self.stuck_after = reviews, 2, stuck_after
-        self.history: list[tuple[int, int]] = []  # (passed, total) per check
+
+CHECK_LOCK = threading.Lock()  # one build and test run at a time: they share frontend/dist
+
+
+class Engineer:
+    """The session that builds the app, with a check tool, requirement lookup and helpers."""
+
+    def __init__(self, llm: LLM, root: Path, req_dir: Path, tree: spec.Node, label: str, steps: int,
+                 task_builder=None):
+        self.llm, self.root, self.req_dir, self.tree, self.label = llm, root, req_dir, tree, label
+        self.steps, self.task_builder = steps, task_builder
+        self.atomics = {a.id: a for a in tree.atomics}
+        self.common = frozenset(spec.boilerplate(tree))  # template sentences, stated once in the outline
         self.last_report = ""
-        self.task_builder = task_builder  # rebuilds the task with a fresh code map after a compaction
-        self.last_feedback = ""  # most recent advisor verdict text, kept across compactions
-        self.unchecked = 0  # steps since the last check
-        self.base = base  # commit the work started from; the advisor reviews the diff against it
+        self.built: list[str] = []  # snapshot commit of the last successful build
+        self.helpers = Helpers(root, req_dir, label, self.extras(lead=False))
+        self.settled = False  # the whole suite passed since the last compaction check
 
     def check(self, args: dict) -> str:
-        self.unchecked = 0
-        ok, report = checks.check(self.root, args.get("pattern") or "")
-        if report.startswith("build ok"):
-            numbers = report.split("e2e ", 1)[1].split(" ", 1)[0] if "e2e " in report else "0/0"
-            passed, total = (int(x) for x in numbers.split("/"))
-            self.history.append((passed, total))
-        else:
-            self.history.append((0, -1))
+        pattern = args.get("pattern") or ""
+        with CHECK_LOCK:
+            ok, report = checks.check(self.root, pattern)
+            if report.startswith("build ok"):  # a snapshot of the working tree, without touching it
+                found = re.findall(r"\b[0-9a-f]{40}\b", shell("git stash create", self.root, 60)) or \
+                    re.findall(r"\b[0-9a-f]{40}\b", shell("git rev-parse HEAD", self.root, 30))
+                self.built = found[:1]
+            elif self.built and report.startswith("frontend build failed"):
+                report += (f"\nThe frontend last built at snapshot {self.built[0][:12]}; `git diff "
+                           f"{self.built[0][:12]} -- frontend/src` shows every change since then.")
         self.last_report = report
+        self.settled = ok and not pattern
         return ("CHECK PASSED\n" if ok else "CHECK FAILED\n") + report
 
-    def context(self) -> str:
-        stat = shell(f"git diff --stat {self.base} -- . ':!*.lock' | tail -40", self.root, 60)
-        diff = shell(f"git diff {self.base} -- . ':!*.lock' ':!*.json'", self.root, 60)
-        return (f"## Node requirements\n{self.cards}\n\n## Last check report\n{self.last_report[:5000]}\n\n"
-                f"## Files changed since {self.base[:8]}\n{stat}\n\n## Full diff (clipped when very large)\n"
-                f"{clip(diff, 60000)}")
+    def helper_check(self, args: dict) -> str:
+        with CHECK_LOCK:
+            ok, report = checks.check(self.root, args.get("pattern") or "")
+        return ("CHECK PASSED\n" if ok else "CHECK FAILED\n") + report
 
-    def on_done(self, _summary: str) -> str:
-        if not self.history:
-            return "Run the check tool before calling done."
-        if self.reviews_left <= 0:
-            return ""
-        self.reviews_left -= 1
-        verdict = advise(self.root, self.req_dir, "review", self.context(), self.label)
-        if verdict.get("approve"):
-            return ""
-        self.last_feedback = feedback(verdict)
-        return self.last_feedback + "\nAddress this, run check, then call done."
+    def requirement(self, args: dict) -> str:
+        wanted = [str(i) for i in args.get("ids") or []]
+        unknown = [i for i in wanted if i not in self.atomics]
+        if unknown or not wanted:
+            return f"ERROR: unknown ids {unknown}; atomic ids are: {', '.join(self.atomics)}"
+        rules = spec.shared(self.tree, wanted)
+        cards = "\n\n".join(spec.card(self.atomics[i], str(self.req_dir), self.common) for i in wanted)
+        return (f"## Rules of the groups these requirements belong to\n{rules}\n\n" if rules else "") + cards
 
-    def on_step(self, _step: int) -> str | None:
-        self.unchecked += 1
-        if self.unchecked >= UNCHECKED_LIMIT:
-            self.unchecked = 0
-            return (f"{UNCHECKED_LIMIT} steps without running check. Run check now: small verified increments "
-                    "are cheaper to fix than a large untested change.")
-        recent = self.history[-self.stuck_after:]
-        if (len(recent) < self.stuck_after or any(p == t and t > 0 for p, t in recent)
-                or len({p for p, _ in recent}) > 1):
-            return None
-        if self.diagnoses_left <= 0:
-            self.history.append((-1, -1))
-            self.reviews_left = 0  # finishing because stuck: the merge judge looks at the result instead
-            return ("Still no progress after two reviews. Stop here: make sure the app builds and starts and the "
-                    "passing tests still pass, then call done with an honest summary of what fails and why. The "
-                    "orchestrator decides whether to continue this work later with fresh information.")
-        self.diagnoses_left -= 1
-        self.history.append((-1, -1))  # do not trigger again on the same run of checks
-        self.last_feedback = feedback(advise(self.root, self.req_dir, "diagnose", self.context(), self.label))
-        return self.last_feedback
+    def subagent(self, args: dict, messages: list[dict], call_id: str) -> str:
+        if len(self.helpers.running()) >= MAX_HELPERS:
+            return f"ERROR: {MAX_HELPERS} subagents are already running; wait for one with wait_subagent"
+        number = self.helpers.start(str(args.get("task", "")), str(args.get("reasoning_effort", "")),
+                                    forked(messages, call_id) if args.get("fork_context") else None)
+        return f"Subagent {number} started; its final answer will arrive as a message. Keep working."
+
+    def wait_subagent(self, args: dict) -> str:
+        number = int(args.get("id", 0))
+        if number not in self.helpers.jobs:
+            return f"ERROR: no subagent {number}"
+        return self.helpers.result(number)
+
+    def on_step(self, _step: int, _messages: list[dict]) -> str | None:
+        """Subagent results that arrived since the last step."""
+        return "\n\n".join(self.helpers.finished()) or None
+
+    def milestone(self) -> bool:
+        settled, self.settled = self.settled, False
+        return settled
 
     def refresh(self) -> tuple[str | None, str]:
         """Fresh task text and the facts a compaction must carry over verbatim."""
         facts = [f"## Latest check report\n{self.last_report[:8000]}"] if self.last_report else []
-        if self.last_feedback:
-            facts.append(f"## Most recent reviewer feedback (may already be addressed)\n{self.last_feedback}")
+        running = [f"- subagent {n}: {self.helpers.jobs[n][0][:300]}" for n in self.helpers.running()]
+        if running:
+            facts.append("## Subagents still running (their results will arrive as messages)\n" + "\n".join(running))
         return (self.task_builder() if self.task_builder else None), "\n\n".join(facts)
 
-    def run(self, task: str, resume: int | str | None = None, note: str | None = None) -> str:
-        check_tool = loop.Extra(
-            {"name": "check", "description": "Build the frontend, start the backend on a fresh database, run the "
-             f"e2e tests and the static rule checks. Pass pattern (e.g. '{self.pattern or 'foundation'}') to run "
-             "only matching test files; omit it to run the whole suite.",
-             "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}}}}, self.check)
-        return loop.run(self.llm, ENGINEER, task, Tools(self.root, readable=[self.req_dir]), extras={"check": check_tool},
-                 max_steps=self.steps, on_done=self.on_done, on_step=self.on_step, label=self.label,
-                 transcript=checkpoint.Transcript(self.root, self.label), resume=resume, note=note,
-                 refresh=self.refresh)
+    def extras(self, lead: bool) -> dict[str, loop.Extra]:
+        """The same tool list for the lead and its subagents (a fork keeps the cached prefix); subagents cannot
+        start subagents of their own."""
+        def refused(*_args) -> str:
+            return "ERROR: only the lead engineer can use this tool; report what it should do in your answer"
+        return {"check": loop.Extra(CHECK, self.check if lead else self.helper_check),
+                "requirement": loop.Extra(REQUIREMENT, self.requirement),
+                "subagent": loop.Extra(SUBAGENT, self.subagent if lead else refused, context=True),
+                "wait_subagent": loop.Extra(WAIT, self.wait_subagent if lead else refused)}
 
-
-def plan(llm: LLM, root: Path, req_dir: Path, tree: spec.Node, template: str, steps: int) -> list[dag.Node]:
-    atomic_ids = [a.id for a in tree.atomics]
-    result: dict = {}
-
-    def submit(args: dict) -> str:
-        nodes, problems = dag.parse(args.get("plan", ""), atomic_ids)
-        if problems:
-            return "Plan rejected:\n" + "\n".join(f"- {p}" for p in problems)
-        result["nodes"] = nodes
-        (root / checkpoint.AGENT_DIR / "plan.json").write_text(args["plan"])
-        return f"Plan accepted: {len(nodes)} nodes. Call done."
-
-    submit_tool = loop.Extra({"name": "submit_plan", "description": "Submit the task graph as JSON text.",
-                              "parameters": {"type": "object", "properties": {"plan": {"type": "string"}},
-                                             "required": ["plan"]}}, submit)
-    task = PLANNER_TASK.format(plan=PLAN_FILE, template=template, req_dir=req_dir, outline=spec.outline(tree),
-                               seeds=spec.seed_facts(tree) or "- none",
-                               cards="\n\n".join(f"### {a.id} {a.name} ({len(a.scenarios)} scenarios)\n"
-                                                 f"{a.description}" for a in tree.atomics))
-    loop.run(llm, ENGINEER, task, Tools(root, readable=[req_dir]), extras={"submit_plan": submit_tool},
-             max_steps=steps, on_done=lambda _s: "" if result else "Submit an accepted plan first.",
-             label="plan", transcript=checkpoint.Transcript(root, "plan"), resume="last")
-    return result.get("nodes") or load_plan(root, atomic_ids)
-
-
-def load_plan(root: Path, atomic_ids: list[str]) -> list[dag.Node]:
-    path = root / checkpoint.AGENT_DIR / "plan.json"
-    if not path.exists():
-        return []
-    nodes, problems = dag.parse(path.read_text(), atomic_ids)
-    return [] if problems else nodes
-
-
-INTEGRATE_TASK = """Merging branch node/{id} into the integration branch produced conflicts in: {files}.
-Resolve every conflict so that both sides' features keep working (keep both sets of routes, registrations, \
-tests and helpers), remove all conflict markers, run check without a pattern, then call done. Do not commit; \
-the orchestrator commits."""
+    def run(self, task: str, resume: int | str | None = None) -> str:
+        extras = self.extras(lead=True)
+        try:
+            return loop.run(self.llm, ENGINEER, task, Tools(self.root, readable=[self.req_dir]), extras=extras,
+                            max_steps=self.steps, on_step=self.on_step, label=self.label,
+                            transcript=checkpoint.Transcript(self.root, self.label), resume=resume,
+                            refresh=self.refresh, milestone=self.milestone)
+        finally:
+            self.helpers.close()

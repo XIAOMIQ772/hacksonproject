@@ -7,6 +7,7 @@ import re
 import signal
 import socket
 import subprocess
+import shlex
 import tempfile
 import time
 import urllib.request
@@ -129,7 +130,7 @@ def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int 
         fast.unlink(missing_ok=True)
     try:
         data = json.loads(report.read_text())
-    except ValueError:
+    except (ValueError, OSError):
         return 0, 0, "playwright produced no report (syntax error in a spec?):\n" + \
             shell(f"npx playwright test {pattern} --list", root / "backend", 120, env={"CI": "1"})
     passed, total, failures, flaky = 0, 0, [], []
@@ -164,6 +165,37 @@ def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int 
     return passed, total, "\n".join(failures)
 
 
+RERUN_MAX_FAILURES = 10  # a rerun stops early when failures are real, not load
+
+
+def failure_names(failures: str) -> list[str]:
+    """Names ("file :: title") of the tests that failed in `e2e` output; flaky ones passed and are excluded."""
+    return re.findall(r"^- (.+ :: .+)$", failures.split("FLAKY (", 1)[0], re.M)
+
+
+def confirm(root: Path, url: str, failures: str) -> tuple[str, int]:
+    """Rerun the failed tests of a whole-suite run one at a time. Returns the failures that remain and the
+    number of tests that passed on the rerun."""
+    names = failure_names(failures)
+    if not names:
+        return failures, 0
+    grep = "|".join(re.escape(name.split(" :: ", 1)[1]) for name in names)
+    _, total, again = e2e(root, url, f"--grep {shlex.quote(grep)} --max-failures={RERUN_MAX_FAILURES}", workers=1)
+    if not total:
+        return failures, 0
+    still = set(failure_names(again))
+    recovered = [name for name in names if name not in still]
+    if not recovered:
+        return failures, 0
+    head, _, tail = failures.partition("FLAKY (")
+    kept = [entry for entry in re.split(r"\n(?=- )", head.strip())
+            if not any(entry.startswith(f"- {name}\n") or entry == f"- {name}" for name in recovered)]
+    sections = [*kept, *([f"FLAKY ({tail}"] if tail else []),
+                "FLAKY (failed in the whole-suite run, passed when rerun one at a time):\n"
+                + "\n".join(f"- {name}" for name in recovered)]
+    return "\n".join(section for section in sections if section), len(recovered)
+
+
 def failed_tests(report: str) -> set[str]:
     """Names ("file :: title") listed in a check report's FAILED TESTS section."""
     section = report.split("FAILED TESTS:\n", 1)[1].split("\nE2E FAILURES:", 1)[0] if "FAILED TESTS:\n" in report else ""
@@ -180,16 +212,25 @@ def check(root: Path, pattern: str = "") -> tuple[bool, str]:
         problem = server.wait()
         if problem:
             return False, problem
-        passed, total, failures = e2e(root, server.url, pattern)
+        if pattern:
+            passed, total, failures = e2e(root, server.url, pattern)
+        else:
+            passed, total, failures = e2e(root, server.url)
+            failures, recovered = confirm(root, server.url, failures)
+            passed += recovered
+        browser = list(dict.fromkeys(re.findall(r"^\[browser error\] (.+)$", server.output(), re.M)))
     finally:
         server.stop()
     violations = static(root)
     lines = [f"build ok; fresh-database start ok; e2e {passed}/{total} passed"]
     if failures:
-        names = re.findall(r"^- (.+ :: .+)$", failures.split("FLAKY (", 1)[0], re.M)  # flaky ones passed
+        names = failure_names(failures)
         if names:  # complete list; the details below may be clipped
             lines.append("FAILED TESTS:\n" + "\n".join(f"- {name}" for name in names[:300]))
         lines.append("E2E FAILURES:\n" + clip(failures, 9000))
+    if browser:
+        lines.append("BROWSER ERRORS (uncaught in the page during the tests; page, then message):\n"
+                     + "\n".join(f"- {line}" for line in browser[:10]))
     if violations:
         lines.append("RULE VIOLATIONS (rule 13):\n" + "\n".join(violations[:30]))
     ok = total > 0 and passed == total and not violations

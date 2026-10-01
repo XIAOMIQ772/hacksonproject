@@ -66,16 +66,40 @@ def quoted_names(text: str) -> list[str]:
     return list(dict.fromkeys(QUOTED.findall(text)))
 
 
-def _scenarios(atomic: Node) -> str:
-    """Scenarios are often templated duplicates; show each distinct one once with its count."""
-    seen: dict[str, int] = {}
-    for scenario in atomic.scenarios:
-        steps = scenario.get("steps") or []
-        text = "\n".join(f"    {s.get('keyword', '')} {s.get('content', '')}" for s in steps)
-        seen[text] = seen.get(text, 0) + 1
+SENTENCE = re.compile(r"(?<=\.)\s+|(?<=。)\s*")  # "README.md" and "v1.0" are not sentence ends
+BOILERPLATE_SHARE = 0.2  # a sentence in this share of all scenarios is template text, stated once in the outline
+
+
+def sentences(text: str) -> list[str]:
+    return [part.strip() for part in SENTENCE.split(text) if part.strip()]
+
+
+def boilerplate(root: Node) -> list[str]:
+    """Long sentences that recur in many scenarios of the product (template text such as the fresh browser
+    session), in order of first appearance. Sentences with a quoted or backticked value (seed data, names)
+    stay with each requirement."""
+    scenarios = [sc for a in root.atomics for sc in a.scenarios]
+    counts: dict[str, int] = {}
+    for scenario in scenarios:
+        for sentence in {t for step in scenario.get("steps") or [] for t in sentences(step.get("content", ""))}:
+            counts[sentence] = counts.get(sentence, 0) + 1
+    return [t for t, n in counts.items() if len(t) > 40 and not re.search(r"[`\"“”]", t)
+            and n >= max(2, BOILERPLATE_SHARE * len(scenarios))]
+
+
+def _scenarios(atomic: Node, common: frozenset[str] = frozenset()) -> str:
+    """The scenarios without the product-wide template sentences and without sentences an earlier step of this
+    requirement already stated; every other sentence (values, seed data, expected results) is kept verbatim."""
+    seen: set[str] = set()
     parts = []
-    for text, count in seen.items():
-        parts.append(f"  Scenario{f' (x{count})' if count > 1 else ''}:\n{text}")
+    for number, scenario in enumerate(atomic.scenarios, 1):
+        lines = []
+        for step in scenario.get("steps") or []:
+            kept = [t for t in sentences(step.get("content", "")) if t not in common and t not in seen]
+            seen.update(kept)
+            if kept:
+                lines.append(f"    {step.get('keyword', '')} {' '.join(kept)}")
+        parts.append(f"  Scenario {number}:\n" + ("\n".join(lines) or "    (same as above)"))
     return "\n".join(parts)
 
 
@@ -83,7 +107,7 @@ def images(text: str) -> list[str]:
     return list(dict.fromkeys(IMAGE.findall(text)))
 
 
-def card(atomic: Node, base: str = "") -> str:
+def card(atomic: Node, base: str = "", common: frozenset[str] = frozenset()) -> str:
     names = quoted_names(atomic.description)
     lines = [f"### {atomic.id} {atomic.name}", atomic.description]
     pictures = images(atomic.description)
@@ -94,7 +118,7 @@ def card(atomic: Node, base: str = "") -> str:
         lines.append("Exact UI strings (accessible names / messages): " + "; ".join(f'"{n}"' for n in names))
     lines.append(f"Acceptance scenarios: {len(atomic.scenarios)}")
     if atomic.scenarios:
-        lines.append(_scenarios(atomic))
+        lines.append(_scenarios(atomic, common))
     return "\n".join(lines)
 
 
@@ -141,6 +165,10 @@ def outline(root: Node) -> str:
                 walk(child, depth + 1)
 
     walk(root, 0)
+    common = boilerplate(root)
+    if common:
+        lines += ["", "Every acceptance scenario also states the following; requirement cards omit it:",
+                  *(f"- {t}" for t in common)]
     return "\n".join(lines)
 
 

@@ -13,7 +13,7 @@ from typing import Callable
 import checkpoint
 import compaction
 from checkpoint import Transcript
-from llm import EFFORTS, LLM
+from llm import LLM
 from tools import Tools, is_read_only
 
 DONE = {"name": "done", "description": "Finish this task. Call only after the check tool passes, or when "
@@ -47,6 +47,8 @@ def read_image(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None
     visual = _visual["llm"]
     reply = visual.chat("You describe images accurately.",
                         [{"role": "user", "content": [{"type": "text", "text": DESCRIBE}, image]}], [])
+    if not reply.text.strip():
+        return f"ERROR: the vision model returned no description of {path}; rely on the requirement text", None
     return f"Description of image {path} (from a vision model):\n{reply.text}", None
 
 
@@ -57,17 +59,6 @@ def read_call(llm: LLM, tools: Tools, arguments: str) -> tuple[str, dict | None]
     except Exception as error:
         image = (f"ERROR: {type(error).__name__}: {error}", None)
     return image or (tools.run("read", arguments), None)
-
-
-def set_reasoning(llm: LLM, arguments: str) -> str:
-    try:
-        level = json.loads(arguments or "{}").get("level", "")
-    except ValueError:
-        level = ""
-    if level not in EFFORTS:
-        return f"ERROR: level must be one of {', '.join(EFFORTS)}"
-    llm.effort = level
-    return f"reasoning set to {level}"
 
 
 def read_only(call: dict) -> bool:
@@ -103,31 +94,32 @@ def prefetch_reads(llm: LLM, tools: Tools, calls: list[dict]) -> dict[str, tuple
 @dataclass
 class Extra:
     schema: dict
-    run: Callable[[dict], str]
+    run: Callable[..., str]
+    context: bool = False  # run(args, messages, call_id): also receives the conversation and the call's id
 
 
 HARD_LIMIT_FACTOR = 4  # guard against a session that never converges
-REASONING = {"name": "set_reasoning", "description": "Set how much the model reasons before each following "
-             "reply: low for routine reading and edits, medium for design, high for a failure you do not "
-             "understand. It stays until changed.",
-             "parameters": {"type": "object", "properties": {"level": {"type": "string", "enum": list(EFFORTS)}},
-                            "required": ["level"]}}
+REREAD_MIN_CHARS = 600  # shorter results cost less than the note that replaces them
 
 
 def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Extra] | None = None,
-        max_steps: int = 60, on_done: Callable[[str], str] | None = None, label: str = "",
+        max_steps: int = 60, label: str = "",
         transcript: Transcript | None = None, resume: int | str | None = None, note: str | None = None,
-        on_step: Callable[[int], str | None] | None = None,
-        refresh: Callable[[], tuple[str | None, str]] | None = None) -> str:
-    """Returns the model's final summary. `on_done` may return an error text to refuse finishing.
+        on_step: Callable[[int, list[dict]], str | None] | None = None,
+        refresh: Callable[[], tuple[str | None, str]] | None = None, hard_limit: int | None = None,
+        milestone: Callable[[], bool] | None = None,
+        history: list[dict] | None = None) -> str:
+    """Returns the model's final summary.
 
     With a transcript every message is recorded and each step ends with a workspace commit. `resume`
     ("last" or a step number) continues from that checkpoint: files are reset to its commit and later
-    transcript records are archived.
+    transcript records are archived. `history` starts the conversation with earlier messages (a forked
+    session), so the provider's prompt cache covers them. `milestone` reports (once) that the work so far is
+    settled, which lets a moderately long history be compacted early.
     """
     extras = extras or {}
     schemas = [{"type": "function", "function": s}
-               for s in [*tools.schemas, *(e.schema for e in extras.values()), REASONING, DONE]]
+               for s in [*tools.schemas, *(e.schema for e in extras.values()), DONE]]
     llm.label = label
     messages: list[dict] = []
     summary_state: dict = {}
@@ -141,10 +133,6 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
         transcript.truncate(step)
         first = step + 1
         print(f"[{label}] resumed at step {step} ({len(messages)} messages, commit {sha[:8]})", flush=True)
-        for message in messages:  # the reasoning level chosen before the checkpoint
-            for call in message.get("tool_calls") or []:
-                if call["function"]["name"] == "set_reasoning":
-                    set_reasoning(llm, call["function"]["arguments"])
 
     def add(message: dict) -> None:
         messages.append(message)
@@ -152,29 +140,20 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
             transcript.message(message)
 
     if not messages:
+        messages.extend(history or [])
         add({"role": "user", "content": task})
     if note:
         add({"role": "user", "content": note})
     started = time.time()
-    review_at, hard_limit = max_steps, max_steps * HARD_LIMIT_FACTOR
-    while review_at < first:
-        review_at += max(10, max_steps // 2)
+    hard_limit = hard_limit or max_steps * HARD_LIMIT_FACTOR
     for step in range(first, hard_limit + 1):
-        compacted = compaction.compact(llm, system, schemas, messages, summary_state, refresh)
+        messages = compaction.trim(messages)
+        compacted = compaction.compact(llm, system, schemas, messages, summary_state, refresh,
+                                       milestone=bool(milestone and milestone()))
         if compacted is not messages:
             messages = compacted
             if transcript:
                 transcript.compaction(messages, summary_state)
-        if step == review_at:  # a budget review, not a stop: the agent decides whether to continue
-            review_at += max(10, max_steps // 2)
-            add({"role": "user", "content": f"You have used {step - 1} steps; the planned budget was {max_steps}. "
-                 "Decide now. If recent checks show progress and the remaining failures look fixable, keep working "
-                 f"(you will be asked again after step {review_at}). If you are stuck or the rest is out of reach, "
-                 "make sure the app builds and starts, then call done with an honest summary of what passes and "
-                 "what does not."})
-        if step == hard_limit - 3:
-            add({"role": "user", "content": "Only 3 steps remain: make the app build and start, "
-                 "run check, then call done with an honest summary."})
         reply = llm.chat(system, messages, schemas)
         add(reply.message)
         if not reply.tool_calls:
@@ -188,22 +167,19 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
                     args = json.loads(call["arguments"] or "{}")
                 except ValueError:
                     args = {"summary": call["arguments"]}
-                refusal = on_done(args.get("summary", "")) if on_done else ""
-                if not refusal:
-                    add({"role": "tool", "tool_call_id": call["id"], "content": "finished"})
-                    if transcript:
-                        transcript.checkpoint(step, len(messages), label)
-                    print(f"[{label}] done in {step} steps, {time.time() - started:.0f}s: "
-                          f"{args.get('summary', '')[:300]}", flush=True)
-                    return args.get("summary", "")
-                result = refusal
+                add({"role": "tool", "tool_call_id": call["id"], "content": "finished"})
+                if transcript:
+                    transcript.checkpoint(step, len(messages), label)
+                print(f"[{label}] done in {step} steps, {time.time() - started:.0f}s: "
+                      f"{args.get('summary', '')[:300]}", flush=True)
+                return args.get("summary", "")
             elif name in extras:
                 try:
-                    result = extras[name].run(json.loads(call["arguments"] or "{}"))
+                    args = json.loads(call["arguments"] or "{}")
+                    extra = extras[name]
+                    result = extra.run(args, messages, call["id"]) if extra.context else extra.run(args)
                 except Exception as error:
                     result = f"ERROR: {type(error).__name__}: {error}"
-            elif name == "set_reasoning":
-                result = set_reasoning(llm, call["arguments"])
             elif call["id"] in prefetched:
                 result, attachment = prefetched.pop(call["id"])
                 if attachment:
@@ -214,6 +190,10 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
                     attachments.append(attachment)
             else:
                 result = tools.run(name, call["arguments"])
+            if name == "read" and len(result) > REREAD_MIN_CHARS and any(
+                    m.get("role") == "tool" and m.get("content") == result for m in messages):
+                result = ("Unchanged: this exact content is already in the conversation from your earlier read of "
+                          "the same file; use that.")
             print(f"[{label}] {step} {name} {call['arguments'][:120]!r} -> {result[:160]!r}", flush=True)
             add({"role": "tool", "tool_call_id": call["id"], "content": result})
         for attachment in attachments:  # user messages may only follow the complete batch of tool results
@@ -222,7 +202,7 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
             add({"role": "user", "content": "Your reply reached the output token limit and was cut off, so its "
                  "last tool call is incomplete. Write large files in several smaller parts (write, then edit to "
                  "append) and keep reasoning brief."})
-        advice = on_step(step) if on_step else None
+        advice = on_step(step, messages) if on_step else None
         if advice:
             add({"role": "user", "content": advice})
         if transcript:
