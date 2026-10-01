@@ -12,16 +12,28 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // API requests are handled one at a time in arrival order, so a write sent just before a page reload is
-// stored before the reload's reads run. A request whose client already disconnected is skipped.
+// stored before the reload's reads run. A request whose connection already closed is skipped (res.closed;
+// not req.destroyed, which newer Node versions set as soon as body-parser has read the body).
+// A request still running after API_SLOT_MS lets later requests through, so one handler that never
+// answers cannot stall every other request.
+const API_SLOT_MS = 10000;
 let apiQueue = Promise.resolve();
 app.use('/api', (req, res, next) => {
   apiQueue = apiQueue.then(() => new Promise((resolve) => {
-    if (res.closed || req.destroyed) {
+    if (res.closed) {
       resolve();
       return;
     }
-    res.on('finish', resolve);
-    res.on('close', resolve);
+    const timer = setTimeout(() => {
+      console.error(`[api] ${req.method} ${req.originalUrl} has not answered after ${API_SLOT_MS} ms`);
+      resolve();
+    }, API_SLOT_MS);
+    const release = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    res.on('finish', release);
+    res.on('close', release);
     next();
   }));
 });
@@ -34,6 +46,13 @@ app.ready = initializeDatabase();
 // register routes
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: 'Backend Ready' });
+});
+
+// Uncaught errors from the page (see frontend/src/main.tsx), logged for the check tool.
+app.post('/api/client-errors', (req, res) => {
+  const { message = '', page = '' } = req.body || {};
+  console.error(`[browser error] ${String(page).slice(0, 200)} ${String(message).slice(0, 500).replace(/\s+/g, ' ')}`);
+  res.status(204).end();
 });
 
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
