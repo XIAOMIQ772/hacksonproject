@@ -429,6 +429,74 @@ class LoadTest(unittest.TestCase):
         self.assertIn("--max-failures=", calls[0][0])
 
 
+class CheckPatternTest(unittest.TestCase):
+    def test_several_spec_files_reach_playwright_as_quoted_filters(self):
+        self.assertEqual(checks.spec_filter("sort.spec|filter.spec"), "sort.spec filter.spec")
+        self.assertEqual(checks.spec_filter("TEMP DIAGNOSTIC"), "TEMP DIAGNOSTIC")
+        self.assertEqual(checks.spec_filter("a;b"), "'a;b'")
+        self.assertEqual(checks.spec_filter(""), "")
+        seen = []
+
+        class Server:
+            url = "http://x"
+
+            def __init__(self, root):
+                pass
+
+            def wait(self):
+                return ""
+
+            def output(self):
+                return ""
+
+            def stop(self):
+                pass
+        saved = checks.build, checks.Server, checks.e2e, checks.static
+        checks.build, checks.Server, checks.static = (lambda root: ""), Server, (lambda root: [])
+        checks.e2e = lambda root, url, pattern="", config="", workers=4: seen.append(pattern) or (2, 2, "")
+        try:
+            ok, report = checks.check(Path("."), "sort.spec|filter.spec")
+        finally:
+            checks.build, checks.Server, checks.e2e, checks.static = saved
+        self.assertTrue(ok)
+        self.assertEqual(seen, ["sort.spec filter.spec"])
+
+
+class PatchCheckTest(unittest.TestCase):
+    """apply_patch with a check argument runs the check in the same step instead of a reply of its own."""
+
+    def run_patch(self, patch: str, check: str) -> tuple[list, str]:
+        class LLM:
+            vision, calls = False, 0
+
+            def chat(self, system, messages, tools):
+                self.calls += 1
+                call = ({"id": "p", "name": "apply_patch", "arguments": json.dumps({"input": patch, "check": check})}
+                        if self.calls == 1 else {"id": "d", "name": "done", "arguments": json.dumps({"summary": "ok"})})
+                message = {"role": "assistant", "content": "", "tool_calls": [{"id": call["id"], "type": "function",
+                           "function": {"name": call["name"], "arguments": call["arguments"]}}]}
+                return type("R", (), {"message": message, "tool_calls": [call], "text": ""})()
+        runs, final = [], []
+        tool = loop.Extra({"name": "check"}, lambda args: runs.append(args) or "CHECK PASSED\ne2e 1/1 passed")
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "a.txt").write_text("a\n")
+            loop.run(LLM(), "sys", "task", Tools(Path(tmp)), extras={"check": tool}, final=final)
+        return runs, next(m["content"] for m in final if m.get("tool_call_id") == "p")
+
+    def test_check_runs_after_a_successful_patch(self):
+        runs, result = self.run_patch("*** Begin Patch\n*** Add File: b.txt\n+b\n*** End Patch", "b.spec|c.spec")
+        self.assertEqual(runs, [{"pattern": "b.spec|c.spec"}])
+        self.assertTrue(result.startswith("Success"))
+        self.assertIn("CHECK PASSED", result)
+        runs, _ = self.run_patch("*** Begin Patch\n*** Add File: b.txt\n+b\n*** End Patch", "all")
+        self.assertEqual(runs, [{"pattern": ""}])
+
+    def test_no_check_after_a_failed_patch(self):
+        runs, result = self.run_patch("*** Begin Patch\n*** Update File: a.txt\n-zzz\n+y\n*** End Patch", "b.spec")
+        self.assertEqual(runs, [])
+        self.assertIn("check was not run", result)
+
+
 class HelperTest(unittest.TestCase):
     def test_results_arrive_as_messages_without_waiting(self):
         import threading

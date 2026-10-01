@@ -94,6 +94,17 @@ def prefetch_reads(llm: LLM, tools: Tools, calls: list[dict]) -> dict[str, tuple
         return {call["id"]: result for call, result in zip(leading, pool.map(execute, leading))}
 
 
+def requested_check(arguments: str) -> str | None:
+    """The spec pattern of an apply_patch call's `check` argument ('' for the whole suite), or None."""
+    try:
+        pattern = json.loads(arguments or "{}").get("check")
+    except (ValueError, AttributeError):
+        return None
+    if not isinstance(pattern, str) or not pattern.strip():
+        return None
+    return "" if pattern.strip().lower() == "all" else pattern.strip()
+
+
 @dataclass
 class Extra:
     schema: dict
@@ -196,6 +207,18 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
                     attachments.append(attachment)
             else:
                 result = tools.run(name, call["arguments"])
+                pattern = requested_check(call["arguments"]) if name == "apply_patch" else None
+                if pattern is not None and "check" not in extras:
+                    result += "\n\nThis session has no check tool; the check argument was ignored."
+                elif pattern is not None and not result.startswith("Success"):
+                    result += "\n\nThe check was not run because the patch did not apply completely."
+                elif pattern is not None:  # the check the model would otherwise call in its next reply
+                    try:
+                        report = extras["check"].run({"pattern": pattern})
+                    except Exception as error:
+                        report = f"ERROR: {type(error).__name__}: {error}"
+                    print(f"[{label}] {step} check {json.dumps({'pattern': pattern})!r} -> {report[:160]!r}", flush=True)
+                    result += f"\n\n{report}"
             if name == "bash" and read_only(call) and len(result) > REREAD_MIN_CHARS and any(
                     m.get("role") == "tool" and m.get("content") == result for m in messages):
                 result = ("Unchanged: this exact output is already in the conversation from an earlier command; "

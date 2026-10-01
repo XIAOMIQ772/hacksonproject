@@ -202,8 +202,15 @@ def failed_tests(report: str) -> set[str]:
     return {line[2:] for line in section.splitlines() if line.startswith("- ")}
 
 
+def spec_filter(pattern: str) -> str:
+    """Playwright file filters for a check pattern, one quoted argument per alternative: 'a.spec|b.spec' (or
+    space separated) runs both files. Unquoted, the shell read the | as a pipe and no test ran."""
+    return " ".join(shlex.quote(part) for part in re.split(r"[|\s]+", pattern) if part)
+
+
 def check(root: Path, pattern: str = "") -> tuple[bool, str]:
     """Full verification used by the `check` tool and the final gate."""
+    pattern = spec_filter(pattern)
     problem = build(root)
     if problem:
         return False, problem

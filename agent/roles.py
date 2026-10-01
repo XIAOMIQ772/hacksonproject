@@ -35,9 +35,9 @@ concurrently, and the rest run in order.
 - Read and search with bash: `sed -n '1,200p' file`, `nl -ba file | sed -n '80,140p'` when you need line \
 numbers, `rg -n 'name' frontend/src`. Gather everything you need in one reply: all the files and searches for \
 the next decision at once, never one read per reply.
-- Write a whole slice in one reply: one apply_patch with every file and change, followed in the same reply by \
-check. Change existing files with small Update File changes instead of re-sending them whole, and do not \
-re-read a file after a successful patch.
+- Write a whole slice in one reply: one apply_patch with every file and change and its check argument set to \
+the area's spec pattern, so the check runs in the same step. Change existing files with small Update File \
+changes instead of re-sending them whole, and do not re-read a file after a successful patch.
 - Do not use python scripts to print large chunks of files or requirement text; use sed -n and the \
 requirement tool.
 - Debug through a subagent: when a check fails for a reason you cannot see from the report, or you would \
@@ -148,9 +148,11 @@ def task_notes(tree: spec.Node) -> str:
     for name, word in TASK_NOTES.items():
         path = HERE / "tasks" / f"{name}.md"
         if word in tree.name.lower() and path.is_file():
-            return ("## Product conventions (learned from earlier builds of this product and their tests: follow "
-                    "them exactly where the requirements leave a choice open; the requirement text wins where they "
-                    f"disagree)\n{path.read_text().strip()}\n\n")
+            return ("## Product conventions (learned from the tests of earlier builds of this product; follow them "
+                    "exactly. For seed data, URLs, element roles and accessible names they take precedence over "
+                    "scenario wording, which is often generated from templates. Do not rewrite or drop them; your "
+                    "own e2e tests locate elements the way they state)\n"
+                    f"{path.read_text().strip()}\n\n")
     return ""
 
 
@@ -272,7 +274,8 @@ CHECK = {"name": "check", "description": "Build the frontend (npm run build), st
          "locators, uncaught browser errors and rule violations.",
          "parameters": {"type": "object", "properties": {
              "pattern": {"type": "string", "description": "Run only test files whose path matches, e.g. "
-                         "'sort.spec' or 'sheets'. Default: empty, the whole suite."}}}}
+                         "'sort.spec' or 'sheets'; several files in one run with 'sort.spec|filter.spec', not one "
+                         "check per file. Default: empty, the whole suite."}}}}
 REQUIREMENT = {"name": "requirement", "description": "Full text of atomic requirements: the description (the "
                "acceptance rule), exact UI strings, reference image paths, acceptance scenarios, and the rules of "
                "the groups they belong to. Ask for all the ids of a feature area in one call.",

@@ -63,7 +63,11 @@ the result lists the failed changes with the closest lines in the file. Resend o
 SCHEMAS = [
     {"name": "apply_patch", "description": APPLY_PATCH_DESCRIPTION,
      "parameters": {"type": "object", "properties": {
-         "input": {"type": "string", "description": "The whole patch, from *** Begin Patch to *** End Patch."}},
+         "input": {"type": "string", "description": "The whole patch, from *** Begin Patch to *** End Patch."},
+         "check": {"type": "string", "description": "Optional: run the check tool in this same step once every "
+                   "file of the patch applied, with this spec pattern (e.g. 'sort.spec', or 'sort.spec|filter.spec'), "
+                   "or 'all' for the whole suite; its report follows the patch result. Set it whenever your next "
+                   "call would be check, instead of spending a separate reply on it."}},
          "required": ["input"]}},
     {"name": "bash", "description": "Run a command with bash -lc in the workspace root and return its combined "
      "stdout and stderr followed by [exit N]. Use it to read and search files (`sed -n '1,200p' f`, `nl -ba f | "
@@ -126,7 +130,7 @@ class Tools:
         except Exception as error:  # the model sees every tool failure and decides what to do
             return f"ERROR: {type(error).__name__}: {error}"
 
-    def _apply_patch(self, input: str) -> str:
+    def _apply_patch(self, input: str, check: str | None = None) -> str:  # check: run by the session loop
         sections = parse_patch(input)
         done, failed = [], []
         for section in sections:

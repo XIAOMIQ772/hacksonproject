@@ -78,7 +78,7 @@ class Builder:
         if self.run.done("build"):
             return
         llm = roles.new_llm()
-        llm.effort = "high"  # the plan and the shared base; the engineer lowers it for routine work
+        llm.effort = "high"  # for the whole build: the lead plans and writes the critical-path code itself
         engineer = roles.Engineer(llm, self.root, self.req_dir, self.tree, "engineer", self.steps,
                                   task_builder=self.refreshed_task)
         engineer.run(self.task(), resume="last" if resume else None)
