@@ -125,7 +125,8 @@ EFFORTS = ("low", "high", "max")  # DeepSeek maps medium to high
 # gives up and delivers its current state; credential and quota errors stop immediately.
 RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
 # A stream cut off after it delivered tokens is the gateway dropping a long reply, not an outage: it is sent again
-# at once, from the second cut on with low reasoning effort so the reply is shorter, up to BROKEN_STREAMS times.
+# at once with an output limit below the cut and, from the second cut on, low reasoning effort, up to
+# BROKEN_STREAMS times.
 BROKEN_STREAMS = int(os.environ.get("AGENT_BROKEN_STREAMS", "10"))
 # Replies are streamed; a connection that delivers nothing for this long is dropped and the request retried.
 # The platform's GLM route sends its first token after 12-45 s and the reply in bursts, so its waits are longer.
@@ -316,6 +317,11 @@ class LLM:
                     raise FatalModelError(f"{broken} streams broke off: {retry}")
                 if broken >= 2 and "extra_body" in request and request["extra_body"].get("reasoning_effort") != "low":
                     request["extra_body"]["reasoning_effort"] = "low"
+                # The gateway drops replies that stream too long: ask for one that ends well before this cut, so
+                # it stops at the output limit and the session is told to split its work.
+                cap = max(4096, int(received / 4 * 0.6))
+                if cap < (request.get("max_tokens") or cap + 1):
+                    request["max_tokens"] = cap
             # a slow first token or a cut stream is the platform's latency, not an outage: send again at once
             wait = 1 if cut or isinstance(retry, FirstTokenTimeout) else min(60, 5 * 2 ** attempt)
             attempt += 1

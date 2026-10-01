@@ -696,10 +696,11 @@ class BrokenStreamTest(unittest.TestCase):
         def chunk(text=None, finish=None, usage=None):
             delta = N(content=text, tool_calls=None, reasoning_content=None, model_extra={})
             return N(choices=[N(delta=delta, finish_reason=finish)] if text or finish else [], usage=usage)
-        efforts = []
+        efforts, limits = [], []
 
         def create(**request):
             efforts.append(request["extra_body"]["reasoning_effort"])
+            limits.append(request["max_tokens"])
             def stream():
                 yield chunk("partial ")
                 if len(efforts) < 3:
@@ -718,6 +719,7 @@ class BrokenStreamTest(unittest.TestCase):
             llm.RETRY_SECONDS = saved
         self.assertEqual(reply.text, "partial done")
         self.assertEqual(efforts, ["high", "high", "low"])
+        self.assertEqual(limits[1:], [4096, 4096])  # below the cut, never under 4096 tokens
 
 
 if __name__ == "__main__":
