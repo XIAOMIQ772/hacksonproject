@@ -687,5 +687,38 @@ class StreamTest(unittest.TestCase):
         self.assertEqual(usage.prompt_tokens, 5)
 
 
+class BrokenStreamTest(unittest.TestCase):
+    def test_a_cut_stream_is_resent_with_low_effort_and_is_not_an_outage(self):
+        from types import SimpleNamespace as N
+        import json as js
+        import llm
+
+        def chunk(text=None, finish=None, usage=None):
+            delta = N(content=text, tool_calls=None, reasoning_content=None, model_extra={})
+            return N(choices=[N(delta=delta, finish_reason=finish)] if text or finish else [], usage=usage)
+        efforts = []
+
+        def create(**request):
+            efforts.append(request["extra_body"]["reasoning_effort"])
+            def stream():
+                yield chunk("partial ")
+                if len(efforts) < 3:
+                    raise js.JSONDecodeError("Unterminated string", "{", 1)
+                yield chunk("done", finish="stop")
+                yield chunk(usage=N(prompt_tokens=5, completion_tokens=2, prompt_tokens_details=None,
+                                    completion_tokens_details=None))
+            return stream()
+        saved = llm.RETRY_SECONDS
+        llm.RETRY_SECONDS = 1  # a cut stream that just delivered data must not count as an outage
+        try:
+            client = llm.LLM("deepseek-v4-flash-vision-exp", api_key="x", base_url="http://127.0.0.1:9")
+            client.client = N(chat=N(completions=N(create=create)))
+            reply = client.chat("sys", [{"role": "user", "content": "hi"}], [])
+        finally:
+            llm.RETRY_SECONDS = saved
+        self.assertEqual(reply.text, "partial done")
+        self.assertEqual(efforts, ["high", "high", "low"])
+
+
 if __name__ == "__main__":
     unittest.main()

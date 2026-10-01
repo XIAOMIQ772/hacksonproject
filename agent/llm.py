@@ -124,6 +124,9 @@ EFFORTS = ("low", "high", "max")  # DeepSeek maps medium to high
 # Transient failures (connection errors, timeouts, 5xx, rate limits) are retried for this long before the run
 # gives up and delivers its current state; credential and quota errors stop immediately.
 RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
+# A stream cut off after it delivered tokens is the gateway dropping a long reply, not an outage: it is sent again
+# at once, from the second cut on with low reasoning effort so the reply is shorter, up to BROKEN_STREAMS times.
+BROKEN_STREAMS = int(os.environ.get("AGENT_BROKEN_STREAMS", "10"))
 # Replies are streamed; a connection that delivers nothing for this long is dropped and the request retried.
 IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "60"))
 # Platform latency swings widely, and a request that is stuck before its first token usually stays stuck. When no
@@ -262,11 +265,12 @@ class LLM:
                 request["extra_body"]["reasoning_effort"] = self.effort
         request.update(stream=True, stream_options={"include_usage": True})
         started = time.time()
-        attempt = 0
+        attempt = broken = 0
         key = next(_live_ids)
         timing: dict = {}
 
         def progress(kind: str, text: str) -> None:
+            timing["last"] = time.time()  # data arrived: the endpoint is alive
             if "first" not in timing:
                 timing["first"] = time.time()
                 _live_update(key, force=True, phase=kind, ttft=round(timing["first"] - timing["sent"], 2))
@@ -300,12 +304,22 @@ class LLM:
                 raise
             except Exception as error:  # connection reset, idle timeout or a broken stream: send the request again
                 retry = error
-            if time.time() - started > RETRY_SECONDS:  # an outage, not a network hiccup
+            received = timing.get("chars", 0)
+            cut = "first" in timing  # the stream broke after delivering tokens
+            if time.time() - max(started, timing.get("last", 0)) > RETRY_SECONDS:  # nothing received: an outage
                 raise FatalModelError(f"model unavailable for {RETRY_SECONDS}s: {retry}")
-            # a slow first token is the platform's latency, not an outage: send again at once
-            wait = 1 if isinstance(retry, FirstTokenTimeout) else min(60, 5 * 2 ** attempt)
+            if cut:
+                broken += 1
+                if broken > BROKEN_STREAMS:
+                    raise FatalModelError(f"{broken} streams broke off: {retry}")
+                if broken >= 2 and "extra_body" in request and request["extra_body"].get("reasoning_effort") != "low":
+                    request["extra_body"]["reasoning_effort"] = "low"
+            # a slow first token or a cut stream is the platform's latency, not an outage: send again at once
+            wait = 1 if cut or isinstance(retry, FirstTokenTimeout) else min(60, 5 * 2 ** attempt)
             attempt += 1
-            print(f"[llm] {type(retry).__name__}: {str(retry)[:200]}; retry in {wait}s", flush=True)
+            print(f"[llm] {type(retry).__name__}: {str(retry)[:200]}; {received} chars after "
+                  f"{time.time() - timing['sent']:.0f}s; retry in {wait}s"
+                  f"{' with low reasoning effort' if cut and broken >= 2 else ''}", flush=True)
             _live_update(key, force=True, phase="retrying", error=f"{type(retry).__name__}: {str(retry)[:160]}",
                          retry_at=time.time() + wait)
             time.sleep(wait)
