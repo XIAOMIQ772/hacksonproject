@@ -13,11 +13,13 @@ from typing import Callable
 
 from llm import LLM, FatalModelError
 
-TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "400000"))
-KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "60000"))
+# GLM and Kimi have a window of about 256K tokens (input and output together); DeepSeek's is far larger.
+SMALL_WINDOW = os.environ.get("MODEL", "").startswith(("glm", "kimi"))
+TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "150000" if SMALL_WINDOW else "400000"))
+KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "50000" if SMALL_WINDOW else "60000"))
 # At a milestone (the whole suite passes) the work behind it is settled, so a history past MILESTONE_TOKENS
 # is compacted there instead of in the middle of the next piece of work.
-MILESTONE_TOKENS = int(os.environ.get("AGENT_MILESTONE_TOKENS", "340000"))
+MILESTONE_TOKENS = int(os.environ.get("AGENT_MILESTONE_TOKENS", "130000" if SMALL_WINDOW else "340000"))
 MILESTONE_KEEP_TOKENS = KEEP_RECENT_TOKENS
 SUMMARY_TAG = "[Handover summary: an earlier part of this session was compacted]"
 
@@ -67,8 +69,8 @@ def cut_index(messages: list[dict], keep_tokens: int) -> int:
     return cut
 
 
-TRIM_START_TOKENS = int(os.environ.get("AGENT_TRIM_START_TOKENS", "200000"))
-TRIM_KEEP_TOKENS = int(os.environ.get("AGENT_TRIM_KEEP_TOKENS", "60000"))
+TRIM_START_TOKENS = int(os.environ.get("AGENT_TRIM_START_TOKENS", "100000" if SMALL_WINDOW else "200000"))
+TRIM_KEEP_TOKENS = int(os.environ.get("AGENT_TRIM_KEEP_TOKENS", "50000" if SMALL_WINDOW else "60000"))
 TRIM_MIN_GAIN = int(os.environ.get("AGENT_TRIM_MIN_GAIN", "30000"))
 TRIMMED = "[trimmed from the context; read the file or run the command again if needed]"
 

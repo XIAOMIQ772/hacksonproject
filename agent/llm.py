@@ -128,13 +128,15 @@ RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
 # at once, from the second cut on with low reasoning effort so the reply is shorter, up to BROKEN_STREAMS times.
 BROKEN_STREAMS = int(os.environ.get("AGENT_BROKEN_STREAMS", "10"))
 # Replies are streamed; a connection that delivers nothing for this long is dropped and the request retried.
-IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "60"))
+# The platform's GLM route sends its first token after 12-45 s and the reply in bursts, so its waits are longer.
+SLOW_START = os.environ.get("MODEL", "").startswith("glm")
+IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "120" if SLOW_START else "60"))
 # Platform latency swings widely, and a request that is stuck before its first token usually stays stuck. When no
 # token (reasoning, answer or tool call) has arrived HEDGE_SECONDS after sending, the same request is sent once
 # more and whichever stream produces a token first is used; the other is closed. When neither has produced one
 # after FIRST_TOKEN_SECONDS, both are dropped and the request is retried at once.
-HEDGE_SECONDS = float(os.environ.get("AGENT_HEDGE_SECONDS", "12"))
-FIRST_TOKEN_SECONDS = float(os.environ.get("AGENT_FIRST_TOKEN_SECONDS", "30"))
+HEDGE_SECONDS = float(os.environ.get("AGENT_HEDGE_SECONDS", "60" if SLOW_START else "12"))
+FIRST_TOKEN_SECONDS = float(os.environ.get("AGENT_FIRST_TOKEN_SECONDS", "150" if SLOW_START else "30"))
 
 
 class FirstTokenTimeout(TimeoutError):
