@@ -37,7 +37,7 @@ read per reply, and no second read of a file that is in the conversation and unc
 ## Subagents
 Your context is the most valuable resource of this build: everything you read stays in it and slows every \
 later step, while a subagent reads in its own context and returns only its conclusion. Keep one or two \
-subagents busy most of the time, and delegate by default work that would pull a lot of text into your context \
+subagents (never more than two at once) busy most of the time, and delegate by default work that would pull a lot of text into your context \
 for a short result, or that can run while you continue:
 - an area is finished: a subagent reviews it against its requirement ids and the list of its files (once, when \
 it is finished; never an area still being built or the whole app);
@@ -74,11 +74,13 @@ assert that results persist. Tests run in parallel against one shared server and
 starts it on a fresh database): tests use the seed accounts and records the scenario names, a scenario that \
 changes a seed record is the only test touching it, and other objects are created through the UI with \
 unique names.
+- Helpers, and the conventions you give subagents, reach pages as a user does: from `/` by clicking (signing \
+in = home, then the "Sign in" link); `page.goto` only for `/` and for URLs the scenario opens directly.
 - Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
 and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
 - Assert exact texts: `getByText(text, {{ exact: true }})` / `toHaveText`, never `toContainText`, which \
-hides extra characters (an icon letter, a prefix) that break an exact accessible name; for each value the \
-scenario looks for, the unanchored `getByText(value)` also matches one element.
+hides extra characters (an icon letter, a prefix) that break an exact accessible name. Assert the values a \
+scenario checks on the whole page, never inside a row locator: `page.getByText(value)` also matches one element.
 - Pass `{{ exact: true }}` for short or numeric names ('3', 'A1', 'Save') so they do not also match '13', \
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \
