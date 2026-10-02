@@ -72,11 +72,11 @@ follow-up work on the same files (fix what its review found, investigate the nex
 exact names from the requirements, act by click/fill/press/paste/setInputFiles, and reload the page to \
 assert that results persist. Tests run in parallel against one shared server and database: each test \
 creates its own objects through the UI with unique names and enters the data it needs; tests may read \
-seeded records but never modify them, unless the product conventions give each browser session its own data.
+seeded records but never modify them.
 - Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
 and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
-- Assert texts the way the hidden tests do: `getByText(text, {{ exact: true }})` / `toHaveText`, never \
-`toContainText`, which hides extra characters (an icon letter, a prefix) that make exact locators fail.
+- Assert exact texts: `getByText(text, {{ exact: true }})` / `toHaveText`, never `toContainText`, which \
+hides extra characters (an icon letter, a prefix) that break an exact accessible name.
 - Pass `{{ exact: true }}` for short or numeric names ('3', 'A1', 'Save') so they do not also match '13', \
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \
@@ -150,11 +150,9 @@ def skills_section() -> str:
                        for name, (description, _) in skills().items())
     if not listed:
         return ""
-    return ("## Skills (techniques and reference facts from earlier builds of web products)\nRead a skill with "
-            "`cat` when its description applies, before the work it covers; read several in one command. A skill "
-            "you read is followed exactly: for seed data, URLs, element roles and accessible names it takes "
-            "precedence over scenario wording and over the engineering rules and the end-to-end test section, and "
-            f"your own e2e tests locate elements the way it states.\n{listed}\n\n")
+    return ("## Skills (general techniques for building web products)\nRead a skill with `cat` when its "
+            "description applies, before the work it covers; read several in one command. Follow a skill you read; "
+            f"where it conflicts with the requirement text, the requirement wins.\n{listed}\n\n")
 
 
 def log(label: str, text: str) -> None:
@@ -264,8 +262,8 @@ changed, and what is left); the lead can continue you with send_subagent, so sto
 
 When your task is a review, read the requirement text and the files your task names (grep for the rest), \
 fix the defects you find in those files unless the task says report only, and add no tests: run check, \
-with the area's pattern, only after you changed a file. When nothing differs, say so and call done. The \
-hidden tests locate every element by the exact text of the requirements, so compare the user interface with the \
+with the area's pattern, only after you changed a file. When nothing differs, say so and call done. Quoted \
+requirement strings are exact accessible names and messages, so compare the user interface with the \
 requirement text character by character and treat every difference as a defect:
 - Accessible names: label text, aria-label, button and link text, headings, tab, menu item and option text \
 must equal the quoted requirement string exactly: same characters, spacing, punctuation and language, with no \
