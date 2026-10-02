@@ -71,10 +71,6 @@ class Usage:
         self.reasoning += record["reasoning"]
         return record
 
-    def __str__(self) -> str:
-        return (f"calls={self.calls} prompt={self.prompt} cached={self.cached} completion={self.completion} "
-                f"reasoning={self.reasoning}")
-
 
 def usage_report(path: Path) -> str:
     """Totals per model and per session role from a usage log."""
@@ -119,6 +115,11 @@ def supports_vision(model: str) -> bool:
     return model in VISION_MODELS or "vision" in model
 
 
+DEFAULT_MODEL = os.environ.get("MODEL") or "glm-5.3-flash"  # the model of every session but the visual one
+# GLM and Kimi have a window of about 256K tokens (input and output together); DeepSeek's is far larger. The
+# output limit leaves room for the compaction trigger (compaction.TRIGGER_TOKENS) in a small window.
+SMALL_WINDOW = DEFAULT_MODEL.startswith(("glm", "kimi"))
+MAX_TOKENS = int(os.environ.get("AGENT_MAX_TOKENS", "65536" if SMALL_WINDOW else "131072"))
 REASONING_EFFORT = os.environ.get("AGENT_REASONING_EFFORT", "high")  # a subagent may be given another level
 EFFORTS = ("low", "high", "max")  # DeepSeek maps medium to high
 # Transient failures (connection errors, timeouts, 5xx, rate limits) are retried for this long before the run
@@ -130,7 +131,7 @@ RETRY_SECONDS = int(os.environ.get("AGENT_RETRY_SECONDS", "900"))
 BROKEN_STREAMS = int(os.environ.get("AGENT_BROKEN_STREAMS", "10"))
 # Replies are streamed; a connection that delivers nothing for this long is dropped and the request retried.
 # The platform's GLM route sends its first token after 12-45 s and the reply in bursts, so its waits are longer.
-SLOW_START = os.environ.get("MODEL", "").startswith("glm")
+SLOW_START = DEFAULT_MODEL.startswith("glm")
 IDLE_SECONDS = int(os.environ.get("AGENT_IDLE_SECONDS", "120" if SLOW_START else "60"))
 # Platform latency swings widely, and a request that is stuck before its first token usually stays stuck. When no
 # token (reasoning, answer or tool call) has arrived HEDGE_SECONDS after sending, the same request is sent once
@@ -234,8 +235,8 @@ def paced(open_stream, timing: dict, on_hedge=None):
 
 class LLM:
     def __init__(self, model: str | None = None, *, api_key: str | None = None, base_url: str | None = None,
-                 max_tokens: int | None = int(os.environ.get("AGENT_MAX_TOKENS", "131072"))):
-        self.model = model or os.environ.get("MODEL") or "glm-5.3-flash"
+                 max_tokens: int | None = MAX_TOKENS):
+        self.model = model or DEFAULT_MODEL
         self.client = OpenAI(api_key=api_key or os.environ.get("OPENAI_API_KEY"),
                              base_url=base_url or os.environ.get("OPENAI_BASE_URL"),
                              timeout=IDLE_SECONDS, max_retries=0)

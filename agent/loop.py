@@ -17,8 +17,9 @@ from llm import LLM
 from tools import Tools, is_read_only
 
 DONE = {"name": "done", "description": "Finish this task and end the session; other tool calls in the same "
-        "reply after done are not run. Call only after the check tool passes, or when no further progress is "
-        "possible.",
+        "reply after done are not run. The lead calls it after a whole-suite check passes, or when no further "
+        "progress is possible; a subagent calls it when its task is finished (reviews and investigations need no "
+        "check).",
         "parameters": {"type": "object", "properties": {
             "summary": {"type": "string", "description": "What was built or found, the last check result, and "
                         "what is still missing. A subagent's summary is its final answer to the lead."}},
@@ -100,7 +101,7 @@ def requested_check(arguments: str) -> str | None:
         pattern = json.loads(arguments or "{}").get("check")
     except (ValueError, AttributeError):
         return None
-    if not isinstance(pattern, str) or not pattern.strip():
+    if not isinstance(pattern, str) or pattern.strip().lower() in ("", "false", "none", "no", "off", "null"):
         return None
     return "" if pattern.strip().lower() == "all" else pattern.strip()
 
@@ -120,17 +121,19 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
         max_steps: int = 60, label: str = "",
         transcript: Transcript | None = None, resume: int | str | None = None, note: str | None = None,
         on_step: Callable[[int, list[dict]], str | None] | None = None,
+        refuse_done: Callable[[], str | None] | None = None,
         refresh: Callable[[], tuple[str | None, str]] | None = None, hard_limit: int | None = None,
         milestone: Callable[[], bool] | None = None,
         history: list[dict] | None = None, final: list[dict] | None = None) -> str:
     """Returns the model's final summary.
 
     With a transcript every message is recorded and each step ends with a workspace commit. `resume`
-    ("last" or a step number) continues from that checkpoint: files are reset to its commit and later
-    transcript records are archived. `history` starts the conversation with earlier messages (a forked
-    session), so the provider's prompt cache covers them. `milestone` reports (once) that the work so far is
-    settled, which lets a moderately long history be compacted early. `final` receives the conversation as it
-    ends, so the session can be continued later.
+    ("last" or a step number) continues from that checkpoint: files are reset to its commit, later transcript
+    records are archived and `note` is added to the conversation. `history` starts the conversation with earlier
+    messages (a forked session), so the provider's prompt cache covers them. `milestone` reports (once) that the
+    work so far is settled, which lets a moderately long history be compacted early. `final` receives the
+    conversation as it ends, so the session can be continued later. `refuse_done` returns why a done call is
+    refused, or None.
     """
     extras = extras or {}
     schemas = [{"type": "function", "function": s}
@@ -139,9 +142,9 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
     messages: list[dict] = []
     summary_state: dict = {}
     first = 1
-    if transcript and resume is None:
-        transcript.archive()  # a fresh session never appends to an earlier attempt's records
     loaded = transcript.load(None if resume == "last" else resume) if transcript and resume is not None else None
+    if transcript and not loaded:
+        transcript.archive()  # a fresh session never appends to an earlier attempt's records
     if loaded:
         messages, summary_state, step, sha = loaded
         checkpoint.reset(tools.root, sha)
@@ -157,7 +160,7 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
     if not messages:
         messages.extend(history or [])
         add({"role": "user", "content": task})
-    if note:
+    elif note:
         add({"role": "user", "content": note})
     started = time.time()
     hard_limit = hard_limit or max_steps * HARD_LIMIT_FACTOR
@@ -177,7 +180,8 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
         prefetched = prefetch_reads(llm, tools, reply.tool_calls)
         for call in reply.tool_calls:
             name = call["name"]
-            if name == "done":
+            refusal = refuse_done() if name == "done" and refuse_done else None
+            if name == "done" and not refusal:
                 try:
                     args = json.loads(call["arguments"] or "{}")
                 except ValueError:
@@ -190,6 +194,8 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
                 print(f"[{label}] done in {step} steps, {time.time() - started:.0f}s: "
                       f"{args.get('summary', '')[:300]}", flush=True)
                 return args.get("summary", "")
+            elif refusal:
+                result = refusal
             elif name in extras:
                 try:
                     args = json.loads(call["arguments"] or "{}")
@@ -208,15 +214,14 @@ def run(llm: LLM, system: str, task: str, tools: Tools, *, extras: dict[str, Ext
             else:
                 result = tools.run(name, call["arguments"])
                 pattern = requested_check(call["arguments"]) if name == "apply_patch" else None
-                if pattern is not None and "check" not in extras:
-                    result += "\n\nThis session has no check tool; the check argument was ignored."
-                elif pattern is not None and not result.startswith("Success"):
+                if pattern is not None and not result.startswith("Success"):
                     result += "\n\nThe check was not run because the patch did not apply completely."
                 elif pattern is not None:  # the check the model would otherwise call in its next reply
                     try:
                         report = extras["check"].run({"pattern": pattern})
                     except Exception as error:
                         report = f"ERROR: {type(error).__name__}: {error}"
+                    # its own log line: the patch line below is cut at 160 characters
                     print(f"[{label}] {step} check {json.dumps({'pattern': pattern})!r} -> {report[:160]!r}", flush=True)
                     result += f"\n\n{report}"
             if name == "bash" and read_only(call) and len(result) > REREAD_MIN_CHARS and any(

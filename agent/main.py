@@ -20,12 +20,11 @@ import checks
 import roles
 import spec
 import llm
-from llm import LLM, FatalModelError
+from llm import FatalModelError
 from tools import shell
 
 HERE = Path(__file__).resolve().parent
 MAP_SKIP = {"package-lock.json", "README.md", ".gitignore", "eslint.config.js"}
-SYSTEM = roles.ENGINEER  # kept for tests and tools that inspect the prompt
 
 
 def workspace_map(root: Path) -> str:
@@ -46,6 +45,8 @@ def setup(root: Path) -> None:
     if not (root / ".gitignore").exists():
         (root / ".gitignore").write_text(f".arc/\n{checkpoint.AGENT_DIR}/\nrequirements/\nnode_modules\ndist/\n*.db\n"
                                           "test-results/\nplaywright-report/\n")
+    if roles.SKILLS.is_dir():  # read on demand; .agent stays out of git and resets
+        shutil.copytree(roles.SKILLS, root / checkpoint.AGENT_DIR / "skills", dirs_exist_ok=True)
     shell("git init -q 2>/dev/null; git config user.email agent@local; git config user.name agent", root, 30)
     problem = checks.install(root)
     if problem:
@@ -66,20 +67,18 @@ class Builder:
 
     def task(self) -> str:
         return roles.BUILD_TASK.format(plan=roles.PLAN_FILE, req_dir=self.req_dir, template=workspace_map(self.root),
-                                       notes=roles.task_notes(self.tree), outline=spec.outline(self.tree),
+                                       notes=roles.skills_section(), outline=spec.outline(self.tree),
                                        seeds=spec.seed_facts(self.tree) or "- none")
 
     def refreshed_task(self) -> str:
         return roles.REFRESH_TASK.format(plan=roles.PLAN_FILE, plan_text=self.plan_text(),
-                                         outline_code=roles.code_map(self.root), notes=roles.task_notes(self.tree),
+                                         outline_code=roles.code_map(self.root), notes=roles.skills_section(),
                                          outline=spec.outline(self.tree))
 
     def build(self, resume: bool) -> None:
         if self.run.done("build"):
             return
-        llm = roles.new_llm()
-        llm.effort = "high"  # for the whole build: the lead plans and writes the critical-path code itself
-        engineer = roles.Engineer(llm, self.root, self.req_dir, self.tree, "engineer", self.steps,
+        engineer = roles.Engineer(roles.new_llm(), self.root, self.req_dir, self.tree, "engineer", self.steps,
                                   task_builder=self.refreshed_task)
         engineer.run(self.task(), resume="last" if resume else None)
         self.run.finish("build", checkpoint.commit(self.root, "build finished"))
@@ -105,16 +104,12 @@ def main() -> int:
         run.finish("template", checkpoint.commit(root, "template"))
     tree = spec.load(req_dir)
     builder = Builder(root, req_dir, tree, args.steps or STEPS_PER_REQUIREMENT * len(tree.atomics))
-    print(f"[agent] {len(tree.atomics)} atomic requirements; model {LLM().model}", flush=True)
+    print(f"[agent] {len(tree.atomics)} atomic requirements; model {llm.DEFAULT_MODEL}", flush=True)
     try:
         builder.build(args.resume)
     except FatalModelError as error:
         print(f"[agent] model unavailable, delivering current state: {error}", flush=True)
-    sessions = roles.SESSIONS
-    calls, prompt = sum(s.usage.calls for s in sessions), sum(s.usage.prompt for s in sessions)
-    cached, completion = sum(s.usage.cached for s in sessions), sum(s.usage.completion for s in sessions)
-    print(f"[agent] finished in {time.time() - started:.0f}s; calls={calls} prompt={prompt} cached={cached} "
-          f"completion={completion} ({len(sessions)} sessions)", flush=True)
+    print(f"[agent] finished in {time.time() - started:.0f}s", flush=True)
     report = llm.usage_report(llm.USAGE_LOG)  # whole run, including sessions before a resume
     (root / checkpoint.AGENT_DIR / "usage-report.txt").write_text(report + "\n")
     print(report, flush=True)

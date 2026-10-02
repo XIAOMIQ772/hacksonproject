@@ -42,7 +42,6 @@ class Transcript:
         self._write({"type": "message", "message": message})
 
     def compaction(self, messages: list[dict], state: dict) -> None:
-        state = {k: sorted(v) if isinstance(v, set) else v for k, v in state.items()}
         self._write({"type": "compaction", "messages": messages, "state": state})
 
     def checkpoint(self, step: int, count: int, label: str) -> str:
@@ -65,7 +64,7 @@ class Transcript:
                 messages.append(record["message"])
             elif record["type"] == "compaction":
                 messages = list(record["messages"])
-                state = {k: set(v) if k in ("read", "modified") else v for k, v in record["state"].items()}
+                state = dict(record["state"])
             elif record["type"] == "checkpoint":
                 found = ([dict(m) for m in messages[:record["count"]]], dict(state), record["step"], record["commit"])
                 if record["step"] == step:
@@ -73,13 +72,6 @@ class Transcript:
         if step is not None and (found is None or found[2] != step):
             raise ValueError(f"no checkpoint for step {step} in {self.path}")
         return found
-
-    def rebase(self, sha: str) -> None:
-        """Make `sha` (e.g. a merge of new upstream work) the commit the next resume starts from, keeping the
-        conversation. Recorded as a new checkpoint one step after the last."""
-        last = self.load()
-        if last:
-            self._write({"type": "checkpoint", "step": last[2] + 1, "commit": sha, "count": len(last[0])})
 
     def archive(self) -> None:
         if self.path.exists():
@@ -98,7 +90,7 @@ class Transcript:
 
 
 class RunState:
-    """Finished phases and the last good commit; every call re-reads the file so instances never go stale."""
+    """Finished phases and their commits; every call re-reads the file so instances never go stale."""
 
     def __init__(self, root: Path):
         self.path = root / AGENT_DIR / "run.json"
@@ -118,11 +110,4 @@ class RunState:
     def finish(self, phase: str, sha: str) -> None:
         data = self.data
         data["done"][phase] = sha
-        self._save(data)
-
-    def forget_from(self, phases: list[str], phase: str) -> None:
-        """Drop `phase` and every later phase so they run again."""
-        data = self.data
-        for name in phases[phases.index(phase):]:
-            data["done"].pop(name, None)
         self._save(data)

@@ -71,11 +71,12 @@ SCHEMAS = [
          "required": ["input"]}},
     {"name": "bash", "description": "Run a command with bash -lc in the workspace root and return its combined "
      "stdout and stderr followed by [exit N]. Use it to read and search files (`sed -n '1,200p' f`, `nl -ba f | "
-     "sed -n '80,140p'` for line numbers, `rg -n pattern dir`, `ls`, `git diff`) and to run tools such as npx tsc. "
-     "Output longer than 12000 characters keeps its start and end with the middle omitted, so read large files in "
-     "ranges. Read-only commands (cat, sed -n, grep, rg, ls, wc, git diff/show/log, ...) at the start of a reply run "
-     "concurrently. Do not start servers, watchers or browsers: the process group is killed when the command ends "
-     "or times out; use the check tool to run the app.",
+     "sed -n '80,140p'` for line numbers, `rg -n pattern dir`, `ls`, `git diff`; not python scripts that print large "
+     "chunks) and to run tools such as npx tsc. Output longer than 12000 characters keeps its start and end with the "
+     "middle omitted, so read large files in ranges. Read-only commands (cat, sed -n, grep, rg, ls, wc, git "
+     "diff/show/log, ...) at the start of a reply run concurrently. The command's process group is killed when it "
+     "ends or times out, so a server or browser lives only inside one command: a subagent may run such an "
+     "experiment that way, on a free port; the lead runs the app only through the check tool.",
      "parameters": {"type": "object", "properties": {
          "command": {"type": "string", "description": "The bash command line."},
          "timeout": {"type": "integer", "description": "Seconds before the command is killed; default 180, "
@@ -169,7 +170,7 @@ class Tools:
         return f"Success. Updated the following files:\n{written}"
 
     def _bash(self, command: str, timeout: int = 180) -> str:
-        if not self.experiments and EXPERIMENT.search(command):
+        if not self.experiments and EXPERIMENT.search(command) and not is_read_only(command):
             return ("ERROR: run the e2e tests through the check tool (pattern selects spec files). Starting the "
                     "server, browser scripts and test runs by hand belong in a subagent: start one with the failing "
                     "test, the error and the files involved, and let it run the experiments and report the cause.")

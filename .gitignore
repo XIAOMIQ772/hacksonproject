@@ -17,3 +17,5 @@ tasks/catalog-benchmark/
 
 # Task-specific conventions for the agent: packaged into submissions from the local copy, never published
 agent/tasks/
+agent/guide.md
+agent/skills/

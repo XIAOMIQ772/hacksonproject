@@ -34,19 +34,17 @@ children:
 
 class PromptTest(unittest.TestCase):
     def test_system_prompt_renders(self):
-        import main
-        self.assertIn("exact: true", main.SYSTEM)
-        self.assertIn("small verified slices", main.SYSTEM)
+        import roles
+        self.assertIn("exact: true", roles.ENGINEER)
+        self.assertIn("small verified slices", roles.ENGINEER)
 
 
 class SpecTest(unittest.TestCase):
-    def test_groups_and_card(self):
+    def test_card(self):
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "requirements.yaml").write_text(YAML)
             root = spec.load(Path(tmp))
-        groups = spec.groups(root)
-        self.assertEqual([g.id for g in groups], ["REQ-1"])
-        card = spec.group_card(groups[0])
+        card = spec.card(root.atomics[0])
         self.assertIn('"Rename"; "Rename item"', card)
         self.assertIn("(same as above)", card)
         self.assertIn("Acceptance scenarios: 2", card)
@@ -91,6 +89,9 @@ class ToolsTest(unittest.TestCase):
                             "node src/index.js & sleep 2; curl localhost:3000", "cd backend && npm start"):
                 self.assertIn("subagent", lead.run("bash", json.dumps({"command": command})), command)
             self.assertIn("exit 0", lead.run("bash", json.dumps({"command": "grep -rn start . || true"})))
+            # read-only searches for such commands are not experiments
+            self.assertIn("[exit", lead.run("bash", json.dumps({"command": 'rg -n "npm start" . || true'})))
+            self.assertNotIn("subagent", lead.run("bash", json.dumps({"command": 'grep -rn "playwright test" .'})))
             self.assertNotIn("subagent", Tools(Path(tmp)).run("bash", json.dumps({"command": "echo npm start"})))
 
     def test_bash_kills_background_children(self):
@@ -364,15 +365,17 @@ class HarnessSpeedTest(unittest.TestCase):
 
 class MilestoneTest(unittest.TestCase):
     def test_milestone_compacts_a_long_history_early_and_keeps_the_recent_turns(self):
+        turn = [{"role": "assistant", "content": "x" * 6000}, {"role": "user", "content": "r"}]
+        turns = (compaction.MILESTONE_TOKENS + compaction.TRIGGER_TOKENS) // 2 // compaction.estimate(turn)
         messages = [{"role": "user", "content": "task"}]
-        for i in range(215):  # between the milestone threshold and the regular trigger
+        for i in range(turns):  # between the milestone threshold and the regular trigger
             messages += [{"role": "assistant", "content": "x" * 6000}, {"role": "user", "content": f"r{i}"}]
         size = compaction.estimate(messages)
         self.assertTrue(compaction.MILESTONE_TOKENS < size < compaction.TRIGGER_TOKENS)
         state = {}
         self.assertIs(compaction.compact(FakeLLM(), "s", [], messages, state), messages)  # no milestone: wait
         new = compaction.compact(FakeLLM(), "s", [], messages, state, milestone=True)
-        self.assertLess(compaction.estimate(new), compaction.MILESTONE_KEEP_TOKENS + 10000)
+        self.assertLess(compaction.estimate(new), compaction.KEEP_RECENT_TOKENS + 10000)
         self.assertEqual(new[-1], messages[-1])
 
 
@@ -404,6 +407,8 @@ class TrimTest(unittest.TestCase):
         self.assertIn("app.ts", rewritten["input"])
         self.assertIn("trimmed", rewritten["input"])  # a later patch superseded it
         self.assertIn("trimmed", trimmed[2]["content"])
+        skill = {"role": "tool", "tool_call_id": "s", "content": "---\nname: grids\n" + "x" * 2000}
+        self.assertEqual(compaction._trim_message(skill), skill)  # loaded skills are kept whole
         self.assertIs(compaction.trim(trimmed), trimmed)  # stable until enough new history accumulates
 
 
@@ -455,7 +460,11 @@ class CheckPatternTest(unittest.TestCase):
         checks.build, checks.Server, checks.static = (lambda root: ""), Server, (lambda root: [])
         checks.e2e = lambda root, url, pattern="", config="", workers=4: seen.append(pattern) or (2, 2, "")
         try:
-            ok, report = checks.check(Path("."), "sort.spec|filter.spec")
+            with tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / "backend" / "test-e2e").mkdir(parents=True)
+                for name in ("sort", "filter"):
+                    (Path(tmp) / "backend" / "test-e2e" / f"{name}.spec.ts").write_text("")
+                ok, report = checks.check(Path(tmp), "sort.spec|filter.spec")
         finally:
             checks.build, checks.Server, checks.e2e, checks.static = saved
         self.assertTrue(ok)
@@ -573,22 +582,60 @@ class HelperTest(unittest.TestCase):
             roles.loop.run, roles.new_llm = original, original_llm
 
 
-class TaskNotesTest(unittest.TestCase):
-    def test_notes_are_chosen_by_product_name(self):
+class UnmatchedPatternTest(unittest.TestCase):
+    def test_off_values_and_unmatched_patterns_skip_the_run(self):
+        self.assertIsNone(loop.requested_check(json.dumps({"input": "", "check": "false"})))
+        self.assertEqual(loop.requested_check(json.dumps({"input": "", "check": "all"})), "")
+        with tempfile.TemporaryDirectory() as tmp:
+            specs = Path(tmp) / "backend" / "test-e2e"
+            specs.mkdir(parents=True)
+            (specs / "sort.spec.ts").write_text("")
+            self.assertEqual(checks.unmatched(Path(tmp), "sort|filter"), "")
+            self.assertIn("sort.spec.ts", checks.unmatched(Path(tmp), "pivot"))
+            ok, report = checks.check(Path(tmp), "pivot")
+            self.assertFalse(ok)
+            self.assertIn("no e2e spec file matches", report)
+
+
+class SnapshotTest(unittest.TestCase):
+    def test_failure_shows_the_page_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "error-context.md"
+            path.write_text('# Page snapshot\n\n```yaml\n- main [ref=e2]:\n  - button "Save" [ref=e4]\n```\n')
+            snapshot = checks.page_snapshot({"attachments": [{"name": "error-context", "path": str(path)}]})
+            self.assertEqual(snapshot, '    - main:\n      - button "Save"')
+            self.assertEqual(checks.page_snapshot({"attachments": []}), "")
+            self.assertEqual(checks.failure_names(f"- a.spec.ts :: t\n  boom\n  Page at the failure:\n{snapshot}"),
+                             ["a.spec.ts :: t"])
+
+
+class SkillTest(unittest.TestCase):
+    def test_skills_are_listed_and_copied_for_reading_on_demand(self):
+        import main
         import roles
-        saved = roles.HERE
+        saved = roles.SKILLS
         try:
             with tempfile.TemporaryDirectory() as tmp:
-                roles.HERE = Path(tmp)
-                (Path(tmp) / "tasks").mkdir()
-                (Path(tmp) / "tasks" / "github.md").write_text("Org pages live at /<org>.")
-                github = spec.Node("ROOT", "GitHub Collaboration Platform Core Requirements", "FOLDER")
-                other = spec.Node("ROOT", "Ticket Booking", "FOLDER")
-                self.assertIn("/<org>", roles.task_notes(github))
-                self.assertEqual(roles.task_notes(other), "")
+                roles.SKILLS = Path(tmp) / "skills"
+                self.assertEqual(roles.skills_section(), "")
+                (roles.SKILLS / "org-pages").mkdir(parents=True)
+                (roles.SKILLS / "org-pages" / "SKILL.md").write_text(
+                    "---\nname: org-pages\ndescription: URLs of organization pages. Load before planning.\n---\n"
+                    "Organization pages live at /<org>.\n")
+                section = roles.skills_section()
+                self.assertIn("- `.agent/skills/org-pages/SKILL.md`: URLs of organization pages.", section)
+                self.assertNotIn("/<org>", section)
+                workspace = Path(tmp) / "ws"
+                workspace.mkdir()
+                original = main.checks.install
+                main.checks.install = lambda root: ""
+                try:
+                    main.setup(workspace)
+                finally:
+                    main.checks.install = original
+                self.assertIn("/<org>", (workspace / ".agent" / "skills" / "org-pages" / "SKILL.md").read_text())
         finally:
-            roles.HERE = saved
-
+            roles.SKILLS = saved
 
 class ForkTest(unittest.TestCase):
     def test_fork_keeps_the_prefix_and_answers_every_pending_call(self):
@@ -720,6 +767,174 @@ class BrokenStreamTest(unittest.TestCase):
         self.assertEqual(reply.text, "partial done")
         self.assertEqual(efforts, ["high", "high", "low"])
         self.assertEqual(limits[1:], [4096, 4096])  # below the cut, never under 4096 tokens
+
+
+def done_llm():
+    """Calls done on every reply, with summary s<n>."""
+    class LLM:
+        vision, calls = False, 0
+
+        def chat(self, system, messages, tools):
+            self.calls += 1
+            call = {"id": f"d{self.calls}", "name": "done", "arguments": json.dumps({"summary": f"s{self.calls}"})}
+            message = {"role": "assistant", "content": "", "tool_calls": [
+                {"id": call["id"], "type": "function", "function": {"name": "done", "arguments": call["arguments"]}}]}
+            return type("R", (), {"message": message, "tool_calls": [call], "text": ""})()
+    return LLM()
+
+
+def lead(tmp: str, helpers=None):
+    """An Engineer without a model or requirements."""
+    import roles
+    engineer = roles.Engineer.__new__(roles.Engineer)
+    engineer.root, engineer.req_dir, engineer.label, engineer.steps = Path(tmp), Path(tmp), "engineer", 10
+    engineer.llm, engineer.task_builder, engineer.last_report, engineer.built = FakeLLM(), None, "", []
+    engineer.settled, engineer.helpers = False, helpers
+    return engineer
+
+
+class SessionEndTest(unittest.TestCase):
+    def test_done_is_refused_while_subagents_run_and_close_stops_them(self):
+        import threading
+        import roles
+        refusals, final = ["busy", None], []
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = loop.run(done_llm(), "sys", "task", Tools(Path(tmp)), refuse_done=lambda: refusals.pop(0),
+                               final=final)
+        self.assertEqual(summary, "s2")  # the refused done got the refusal as its result
+        self.assertEqual(next(m["content"] for m in final if m.get("tool_call_id") == "d1"), "busy")
+
+        release = threading.Event()
+        original, original_llm = roles.loop.run, roles.new_llm
+
+        def session(llm, system, text, tools, **kwargs):
+            release.wait(5)
+            kwargs["on_step"](1, [])  # the step boundary after close raises
+            (tools.root / "late.txt").write_text("x")
+            return "done"
+        roles.loop.run, roles.new_llm = session, (lambda model=None: FakeLLM())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                engineer = lead(tmp, roles.Helpers(Path(tmp), Path(tmp), "engineer", {}))
+                number = engineer.helpers.start("build area 2")
+                self.assertIn("still running", engineer.refuse_done())
+                threading.Timer(0.2, release.set).start()
+                engineer.helpers.close()  # returns once the subagent stopped
+                self.assertFalse((Path(tmp) / "late.txt").exists())
+                self.assertIn("session ended", engineer.helpers.result(number))
+                self.assertIsNone(engineer.refuse_done())
+        finally:
+            roles.loop.run, roles.new_llm = original, original_llm
+
+
+class SubagentTaskTest(unittest.TestCase):
+    def test_compaction_restores_the_subagent_task_and_listings_show_the_latest_message(self):
+        import threading
+        import roles
+        seen, release = [], threading.Event()
+        original, original_llm = roles.loop.run, roles.new_llm
+
+        def session(llm, system, text, tools, **kwargs):
+            seen.append((text, kwargs["refresh"]()))
+            release.wait(5)
+            return "ok"
+        roles.loop.run, roles.new_llm = session, (lambda model=None: FakeLLM())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                engineer = lead(tmp, roles.Helpers(Path(tmp), Path(tmp), "engineer", {}, "## Product conventions\nX\n\n"))
+                number = engineer.helpers.start("review area 1", history=[{"role": "user", "content": "lead task"}])
+                engineer.helpers.send(number, "also check the dialog")
+                self.assertIn("also check the dialog", engineer.refresh()[1])
+                release.set()
+                engineer.helpers.result(number)
+                engineer.helpers.close()
+            text, (task, facts) = seen[0]
+            self.assertTrue(text.startswith(roles.FORKED))
+            self.assertTrue(task.startswith("## Product conventions"))  # the notes first: a prefix all subagents share
+            self.assertIn("review area 1", task)
+            self.assertNotIn("conversation so far", task)
+        finally:
+            roles.loop.run, roles.new_llm = original, original_llm
+
+
+class ResumeTest(unittest.TestCase):
+    def test_resume_without_a_checkpoint_archives_and_a_resumed_session_gets_the_note(self):
+        from checkpoint import Transcript, commit
+        from tools import shell
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shell("git init -q && git config user.email t@t && git config user.name t", root, 30)
+            (root / ".gitignore").write_text(".agent/\n")
+            commit(root, "init")
+            Transcript(root, "p").message({"role": "user", "content": "old attempt"})
+            loop.run(ScriptedLLM(), "sys", "task", Tools(root), transcript=Transcript(root, "p"), resume="last",
+                     note="resumed", max_steps=10)
+            self.assertEqual(len(list((root / ".agent").glob("p.replaced-*.jsonl"))), 1)
+            messages = Transcript(root, "p").load()[0]
+            self.assertEqual([m["content"] for m in messages if m["role"] == "user"], ["task"])
+            llm = ScriptedLLM()
+            llm.calls = 1
+            loop.run(llm, "sys", "task", Tools(root), transcript=Transcript(root, "p"), resume=1, note="resumed",
+                     max_steps=10)
+            messages = Transcript(root, "p").load()[0]
+            self.assertEqual([m["content"] for m in messages if m["role"] == "user"], ["task", "resumed"])
+
+    def test_engineer_tells_a_resumed_lead_its_subagents_are_gone(self):
+        import roles
+        captured = {}
+        original = roles.loop.run
+        roles.loop.run = lambda *args, **kwargs: captured.update(kwargs) or "ok"
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                lead(tmp, roles.Helpers(Path(tmp), Path(tmp), "engineer", {})).run("task", resume="last")
+        finally:
+            roles.loop.run = original
+        self.assertEqual(captured["note"], roles.RESUMED)
+        self.assertIn("gone", roles.RESUMED)
+
+
+class ModelLimitsTest(unittest.TestCase):
+    def test_window_and_output_limit_follow_the_effective_model(self):
+        import os
+        import subprocess
+        code = ("import compaction, llm; print(llm.DEFAULT_MODEL, llm.SLOW_START, llm.MAX_TOKENS, "
+                "compaction.TRIGGER_TOKENS)")
+
+        def limits(model: str) -> list[str]:
+            env = {k: v for k, v in os.environ.items() if not k.startswith(("MODEL", "AGENT_"))}
+            env.update({"MODEL": model} if model else {})
+            return subprocess.run([sys.executable, "-c", code], cwd=Path(__file__).resolve().parent.parent, env=env,
+                                  capture_output=True, text=True, check=True).stdout.split()
+        self.assertEqual(limits(""), ["glm-5.3-flash", "True", "65536", "150000"])  # trigger + output < 256K
+        self.assertEqual(limits("kimi-k2"), ["kimi-k2", "False", "65536", "150000"])
+        self.assertEqual(limits("deepseek-v4-flash"), ["deepseek-v4-flash", "False", "131072", "400000"])
+
+
+class CheckToolTest(unittest.TestCase):
+    def test_all_runs_the_whole_suite(self):
+        seen, original = [], checks.check
+        checks.check = lambda root, pattern="": seen.append(pattern) or (True, "e2e 2/2 passed")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                engineer = lead(tmp)
+                self.assertTrue(engineer.check({"pattern": " all "}).startswith("CHECK PASSED"))
+                self.assertTrue(engineer.settled)
+                engineer.check({"pattern": "ALL"}, lead=False)
+        finally:
+            checks.check = original
+        self.assertEqual(seen, ["", ""])
+
+    def test_app_server_gets_no_secrets(self):
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {
+                "ARCBENCH_COOKIE": "c", "ARCBENCH_PASSWORD": "p", "OPENAI_API_KEY": "k"}), \
+                mock.patch.object(checks.subprocess, "Popen") as popen:
+            checks.Server(Path(tmp))
+        env = popen.call_args.kwargs["env"]
+        for name in ("ARCBENCH_COOKIE", "ARCBENCH_PASSWORD", "OPENAI_API_KEY"):
+            self.assertNotIn(name, env)
+        self.assertIn("PORT", env)
 
 
 if __name__ == "__main__":

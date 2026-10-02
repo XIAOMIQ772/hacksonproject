@@ -11,27 +11,24 @@ import os
 import re
 from typing import Callable
 
-from llm import LLM, FatalModelError
+from llm import LLM, SMALL_WINDOW, FatalModelError
 
-# GLM and Kimi have a window of about 256K tokens (input and output together); DeepSeek's is far larger.
-SMALL_WINDOW = os.environ.get("MODEL", "").startswith(("glm", "kimi"))
 TRIGGER_TOKENS = int(os.environ.get("AGENT_CONTEXT_TOKENS", "150000" if SMALL_WINDOW else "400000"))
 KEEP_RECENT_TOKENS = int(os.environ.get("AGENT_KEEP_RECENT_TOKENS", "50000" if SMALL_WINDOW else "60000"))
 # At a milestone (the whole suite passes) the work behind it is settled, so a history past MILESTONE_TOKENS
 # is compacted there instead of in the middle of the next piece of work.
 MILESTONE_TOKENS = int(os.environ.get("AGENT_MILESTONE_TOKENS", "130000" if SMALL_WINDOW else "340000"))
-MILESTONE_KEEP_TOKENS = KEEP_RECENT_TOKENS
 SUMMARY_TAG = "[Handover summary: an earlier part of this session was compacted]"
 
 SUMMARY_REQUEST = """CONTEXT CHECKPOINT. Your earlier messages will be removed from the conversation and \
 replaced by the summary you write now; another instance of you continues from it. Do not call tools; \
 answer with the summary only. The continuation also receives the task again with the current plan and a fresh \
-code map, and the latest check report, so do not copy those. Include results of subagents that are still \
-relevant. Write:
+code map, the latest check report and the subagents still running, so do not copy those. Include results of \
+subagents that are still relevant. Write:
 
 ## Progress
 Each feature area of the plan with its requirement ids: done and passing / implemented but failing (why) / \
-not started. Subagents still running and what each was asked to do.
+not started.
 ## Decisions
 Design choices made and the reasons, including approaches tried and abandoned.
 ## Current problem
@@ -110,7 +107,9 @@ def _trim_message(m: dict, rewritten: set[str] = frozenset()) -> dict:
                     pass
             calls.append(call)
         return {**m, "tool_calls": calls} if calls else m
-    if m["role"] == "tool" and isinstance(m.get("content"), str) and len(m["content"]) > 600:
+    # a loaded skill is guidance followed for the rest of the session, so it stays
+    if m["role"] == "tool" and isinstance(m.get("content"), str) and len(m["content"]) > 600 \
+            and not m["content"].startswith("---\nname: "):
         return {**m, "content": f"{m['content'][:200]}\n{TRIMMED}"}
     if m["role"] == "user" and isinstance(m.get("content"), list):
         text = " ".join(p.get("text", "") for p in m["content"] if p.get("type") == "text")
@@ -165,13 +164,12 @@ def compact(llm: LLM, system: str, tools: list[dict], messages: list[dict], stat
     size = estimate(messages)
     if size <= (MILESTONE_TOKENS if milestone else TRIGGER_TOKENS):
         return messages
-    cut = cut_index(messages, MILESTONE_KEEP_TOKENS if milestone else KEEP_RECENT_TOKENS)
+    cut = cut_index(messages, KEEP_RECENT_TOKENS)
     if cut <= 1:
         return messages
     summary = summarize(llm, system, tools, messages) or state.get("summary", "")
     task, facts = refresh() if refresh else (None, "")
     state["summary"] = summary
-    state["count"] = state.get("count", 0) + 1
     first = {"role": "user", "content": task} if task else messages[0]
     note = f"{SUMMARY_TAG}\n{summary}" + (f"\n\n{facts}" if facts else "")
     new = [first, {"role": "user", "content": note}, *messages[cut:]]

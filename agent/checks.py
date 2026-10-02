@@ -13,7 +13,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from tools import clip, kill_group, shell
+from tools import SECRET_ENV, clip, kill_group, shell
 
 # Browser dialogs are dismissed automatically by the test browser (rule 13).
 STATIC_RULES = [
@@ -28,12 +28,10 @@ def free_port() -> int:
 
 
 def install(root: Path) -> str:
-    """npm install where node_modules is missing or older than package.json (shared symlinks are left alone)."""
+    """npm install where node_modules is missing or older than package.json."""
     out = []
     for part in ("backend", "frontend"):
         pkg, modules = root / part / "package.json", root / part / "node_modules"
-        if modules.is_symlink():  # a worktree sharing the integration branch's dependencies
-            continue
         if modules.is_dir() and modules.stat().st_mtime >= pkg.stat().st_mtime:
             continue
         result = shell("npm install --no-audit --no-fund --loglevel=error", root / part, 600)
@@ -60,7 +58,7 @@ class Server:
         self.root, self.port = root, free_port()
         self.dir = tempfile.mkdtemp(prefix="arc-db-")
         self.log = Path(self.dir) / "server.log"
-        env = {k: v for k, v in os.environ.items() if not k.startswith(("OPENAI_", "VISUAL_"))}
+        env = {k: v for k, v in os.environ.items() if k not in SECRET_ENV}
         env.update(PORT=str(self.port), ARC_DB_FILE=f"{self.dir}/app.db", DATABASE_FILE=f"{self.dir}/app.db")
         self.proc = subprocess.Popen(["npm", "start"], cwd=root / "backend", env=env, start_new_session=True,
                                      stdout=self.log.open("w"), stderr=subprocess.STDOUT)
@@ -86,7 +84,7 @@ class Server:
         kill_group(self.proc.pid)
 
 
-def static(root: Path, allow: str = "") -> list[str]:
+def static(root: Path) -> list[str]:
     """Violations of the component rules; a line containing 'required by REQ-' is an explicit exception."""
     found = []
     for path in sorted((root / "frontend" / "src").rglob("*.[jt]s*")):
@@ -106,6 +104,22 @@ const config = base.default || base;
 module.exports = {{ ...config, expect: {{ ...(config.expect || {{}}), timeout: 3000 }},
   use: {{ ...(config.use || {{}}), actionTimeout: 3000, navigationTimeout: 5000, trace: 'off' }} }};
 """
+
+
+SNAPSHOTS = 2  # failures that get the page snapshot Playwright records at the failing step
+
+
+def page_snapshot(result: dict) -> str:
+    """The accessibility snapshot of the page at a failure (Playwright's error-context attachment), indented so
+    it stays inside its failure entry; empty when there is none."""
+    path = next((a.get("path") for a in result.get("attachments") or [] if a.get("name") == "error-context"), None)
+    try:
+        text = Path(path).read_text(errors="replace") if path else ""
+    except OSError:
+        return ""
+    lines = [re.sub(r" \[ref=e\d+\]", "", line) for line in text.splitlines()
+             if line.strip() and not line.startswith(("#", "```"))]
+    return "\n".join(f"    {line}" for line in clip("\n".join(lines), 1200).splitlines())
 
 
 def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int = 4) -> tuple[int, int, str]:
@@ -151,7 +165,9 @@ def e2e(root: Path, url: str, pattern: str = "", config: str = "", workers: int 
                     messages = [e.get("message", "") for e in results[-1].get("errors") or []]
                     messages = messages or [(results[-1].get("error") or {}).get("message", "")]
                     error = re.sub(r"\x1b\[[0-9;]*m", "", "\n".join(dict.fromkeys(messages)))
-                    failures.append(f"- {spec.get('file')} :: {spec.get('title')}\n  {clip(error, 700)}")
+                    snapshot = page_snapshot(results[-1]) if len(failures) < SNAPSHOTS else ""
+                    failures.append(f"- {spec.get('file')} :: {spec.get('title')}\n  {clip(error, 700)}"
+                                    + (f"\n  Page at the failure:\n{snapshot}" if snapshot else ""))
         for child in suite.get("suites", []):
             walk(child)
 
@@ -202,14 +218,37 @@ def failed_tests(report: str) -> set[str]:
     return {line[2:] for line in section.splitlines() if line.startswith("- ")}
 
 
+def spec_parts(pattern: str) -> list[str]:
+    """The alternatives of a check pattern: 'a.spec|b.spec' (or space separated) names both files."""
+    return [part for part in re.split(r"[|\s]+", pattern) if part]
+
+
 def spec_filter(pattern: str) -> str:
-    """Playwright file filters for a check pattern, one quoted argument per alternative: 'a.spec|b.spec' (or
-    space separated) runs both files. Unquoted, the shell read the | as a pipe and no test ran."""
-    return " ".join(shlex.quote(part) for part in re.split(r"[|\s]+", pattern) if part)
+    """Playwright file filters for a check pattern, one quoted argument per alternative. Unquoted, the shell
+    read the | as a pipe and no test ran."""
+    return " ".join(shlex.quote(part) for part in spec_parts(pattern))
+
+
+def unmatched(root: Path, pattern: str) -> str:
+    """An explanation when no e2e spec file matches the pattern (Playwright reads each part as a regular
+    expression on the file path), so no build is spent on a run without tests; empty otherwise."""
+    specs = sorted(str(p.relative_to(root / "backend")) for p in (root / "backend" / "test-e2e").glob("*.spec.*"))
+    parts = spec_parts(pattern)
+    def matches(part: str, spec: str) -> bool:
+        try:
+            return re.search(part, spec) is not None
+        except re.error:
+            return part in spec
+    if not parts or any(matches(part, spec) for part in parts for spec in specs):
+        return ""
+    return f"no e2e spec file matches the pattern {pattern!r}; spec files: {', '.join(specs) or 'none'}"
 
 
 def check(root: Path, pattern: str = "") -> tuple[bool, str]:
     """Full verification used by the `check` tool and the final gate."""
+    problem = unmatched(root, pattern)
+    if problem:
+        return False, problem
     pattern = spec_filter(pattern)
     problem = build(root)
     if problem:

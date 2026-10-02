@@ -1,4 +1,4 @@
-"""Requirement tree loading and per-group task cards."""
+"""Requirement tree loading, requirement cards and the product outline."""
 from __future__ import annotations
 
 import json
@@ -41,25 +41,6 @@ def load(requirement_dir: Path) -> Node:
     txt = requirement_dir / "requirement.txt"
     data = json.loads(txt.read_text())
     return _node(yaml.safe_load(data["requirements_yaml"]))
-
-
-def groups(root: Node) -> list[Node]:
-    """Nodes whose children are all atomic (the natural unit of work), in document order."""
-    out: list[Node] = []
-
-    def walk(node: Node) -> None:
-        if node.type == "ATOMIC":
-            return
-        if node.children and all(c.type == "ATOMIC" for c in node.children):
-            out.append(node)
-            return
-        for child in node.children:
-            walk(child)
-        if not node.children and node is not root:
-            out.append(node)
-
-    walk(root)
-    return out or [root]
 
 
 def quoted_names(text: str) -> list[str]:
@@ -120,14 +101,6 @@ def card(atomic: Node, base: str = "", common: frozenset[str] = frozenset()) -> 
     if atomic.scenarios:
         lines.append(_scenarios(atomic, common))
     return "\n".join(lines)
-
-
-def group_card(group: Node, base: str = "") -> str:
-    head = f"## {group.id} {group.name}\n{group.description}".strip()
-    pictures = images(group.description)
-    if pictures:
-        head += "\nReference images: " + ", ".join(f"{base}/{p}" if base else p for p in pictures)
-    return head + "\n\n" + "\n\n".join(card(a, base) for a in group.atomics)
 
 
 def shared(root: Node, atomic_ids: list[str] | None = None) -> str:
