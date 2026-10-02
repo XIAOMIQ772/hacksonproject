@@ -70,13 +70,15 @@ follow-up work on the same files (fix what its review found, investigate the nex
 `import {{ test, expect }} from '@playwright/test'` and shared helpers from backend/test-e2e/helpers.ts.
 - Tests start at page.goto('/') in a fresh browser context, use only getByRole/getByLabel/getByText with the \
 exact names from the requirements, act by click/fill/press/paste/setInputFiles, and reload the page to \
-assert that results persist. Tests run in parallel against one shared server and database: each test \
-creates its own objects through the UI with unique names and enters the data it needs; tests may read \
-seeded records but never modify them.
+assert that results persist. Tests run in parallel against one shared server and database (each check \
+starts it on a fresh database): tests use the seed accounts and records the scenario names, a scenario that \
+changes a seed record is the only test touching it, and other objects are created through the UI with \
+unique names.
 - Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
 and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
 - Assert exact texts: `getByText(text, {{ exact: true }})` / `toHaveText`, never `toContainText`, which \
-hides extra characters (an icon letter, a prefix) that break an exact accessible name.
+hides extra characters (an icon letter, a prefix) that break an exact accessible name; for each value the \
+scenario looks for, the unanchored `getByText(value)` also matches one element.
 - Pass `{{ exact: true }}` for short or numeric names ('3', 'A1', 'Save') so they do not also match '13', \
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \

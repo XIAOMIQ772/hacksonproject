@@ -9,13 +9,13 @@ Treat the requirements as a contract verified by end-to-end browser tests. The r
 - All sessions share one running server and database: records created earlier remain, and new objects often carry a unique suffix in their names.
 
 ## Reading requirements
-1. Each atomic requirement's description is the acceptance rule. Scenario steps are generated from templates and can be garbled or hold placeholders; use them only for seed values and flow.
+1. Each atomic requirement's description is the acceptance rule. Scenario steps are generated from templates and can be garbled or hold placeholders; use them only for seed values and flow. Walk each scenario step by step in the state the previous step leaves (signed in or not, current page, open dialog): every control a step uses must be visible in that state. When it is not (e.g. a step clicks the sign-in link right after an action that left the session active), change the app so the step works (the action ends the session, or the control stays available), never the test.
 2. Every double-quoted UI string is an exact accessible name or message: same case, spacing and punctuation. Substitute placeholders like `<cell coordinate>` with real values and keep the rest verbatim.
 3. When the description and a scenario disagree, satisfy both (e.g. show the confirmation dialog when one says "must" and the other says "if").
 4. Implement only what the requirements describe; elements are found by role, name, label and link target, and every addition is a chance for a name to become ambiguous. Add no feature, page, control, text, link, animation or decorative styling the requirements do not ask for. Unless a requirement says otherwise, each key element (a link to a page, a button for an action, a form field, a heading, a status or error message) appears exactly once in its view: no second link to the same destination, no repeated button for the same action, no translated or abbreviated duplicate of a required label. A flow whose requirement names no input (for example a creation page described only by its submit button) must succeed without any user input: add no required field the requirement does not list, and use a sensible default value instead.
 
 ## Semantics
-5. Use the role the requirement names (link, button, heading, tab, menuitem, searchbox, checkbox...). Otherwise: navigation is an `<a href>`, an action is a `<button>`.
+5. Use the role the requirement names (link, button, heading, tab, menuitem, searchbox, checkbox...). Otherwise: navigation is a link (the router's `<Link>`), an action is a `<button>`.
 6. Every interactive element has an accessible name: visible text, a `<label for>` for inputs, or `aria-label` for icon-only controls.
 7. Within one view, names are unique per role. Repeated rows or cells get names that include their identifier (e.g. `Open dropdown for B2`).
 8. An element's accessible name is exactly its required label: counts, badges and icons next to a label are outside the link/button or marked `aria-hidden="true"`.
