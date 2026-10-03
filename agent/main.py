@@ -102,6 +102,9 @@ def main() -> int:
     root.mkdir(parents=True, exist_ok=True)
     earlier = not args.resume and checkpoint.start_over(root)
     setup(root)
+    if earlier:
+        problem = checks.keep_stage_db(root)
+        print(f"[agent] earlier stage's database: {problem or 'kept in ' + checks.STAGE_DB}", flush=True)
     llm.USAGE_LOG = root / checkpoint.AGENT_DIR / "usage.jsonl"
     llm.LIVE_FILE = root / checkpoint.AGENT_DIR / "llm-live.json"
     run = checkpoint.RunState(root)

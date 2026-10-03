@@ -136,7 +136,9 @@ PLAN-earlier.md; their tests are in backend/test-e2e). Build the requirements be
 extend its data model, seed data, pages, components and test helpers instead of rewriting them, and keep its \
 pages working. {plan} covers only the requirements below. Before changing anything, run check without a \
 pattern once and note which earlier tests already fail; they are not yours to fix, but every earlier test \
-that passed must still pass at the end.
+that passed must still pass at the end. The evaluator starts this stage's app on the database the earlier \
+stage left, so a schema change adds tables or columns with defaults and keeps existing rows valid; check also \
+starts the app on that data.
 """
 
 REFRESH_TASK = """Continue building the product below as one working app in this workspace; your earlier \

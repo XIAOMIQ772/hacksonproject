@@ -8,6 +8,7 @@ import signal
 import socket
 import subprocess
 import shlex
+import shutil
 import tempfile
 import time
 import urllib.request
@@ -54,12 +55,19 @@ def build(root: Path) -> str:
     return "" if result.rstrip().endswith("[exit 0]") else f"frontend build failed:\n{result}"
 
 
-class Server:
-    """Backend started as in production (`npm start`), on a fresh database."""
+# The database the earlier stage's app left after its own tests: the evaluator starts a later stage's app on the
+# earlier stage's data, so the new code must start on it.
+STAGE_DB = ".agent/stage-db"
 
-    def __init__(self, root: Path):
+
+class Server:
+    """Backend started as in production (`npm start`), on a fresh database or a copy of the files in `data`."""
+
+    def __init__(self, root: Path, data: Path | None = None):
         self.root, self.port = root, free_port()
         self.dir = tempfile.mkdtemp(prefix="arc-db-")
+        for item in (data.iterdir() if data else []):
+            shutil.copy2(item, self.dir)
         self.log = Path(self.dir) / "server.log"
         env = {k: v for k, v in os.environ.items() if k not in SECRET_ENV}
         env.update(PORT=str(self.port), ARC_DB_FILE=f"{self.dir}/app.db", DATABASE_FILE=f"{self.dir}/app.db")
@@ -85,6 +93,28 @@ class Server:
 
     def stop(self) -> None:
         kill_group(self.proc.pid)
+
+
+def keep_stage_db(root: Path) -> str:
+    """Before a later stage changes the code: run the earlier app's own tests on a fresh database and keep that
+    database in STAGE_DB. Returns a problem, empty when the database was kept."""
+    problem = build(root)
+    if problem:
+        return problem
+    server = Server(root)
+    try:
+        problem = server.wait()
+        if not problem:
+            e2e(root, server.url)
+    finally:
+        server.stop()
+    files = list(Path(server.dir).glob("app.db*"))
+    if problem or not files:
+        return problem or "the earlier app wrote no database file at ARC_DB_FILE"
+    (root / STAGE_DB).mkdir(parents=True, exist_ok=True)
+    for item in files:
+        shutil.copy2(item, root / STAGE_DB)
+    return ""
 
 
 LONG_FILE_LINES = 400
@@ -270,6 +300,16 @@ def check(root: Path, pattern: str = "") -> tuple[bool, str]:
     problem = build(root)
     if problem:
         return False, problem
+    if (root / STAGE_DB).is_dir():
+        server = Server(root, root / STAGE_DB)
+        try:
+            problem = server.wait()
+        finally:
+            server.stop()
+        if problem:
+            return False, ("the backend does not start on the earlier stage's database (a copy of "
+                           f"{STAGE_DB}): the evaluator starts this stage on the earlier stage's data, so schema "
+                           "changes must migrate existing rows and keep them working.\n" + problem)
     server = Server(root)
     try:
         problem = server.wait()
@@ -285,7 +325,7 @@ def check(root: Path, pattern: str = "") -> tuple[bool, str]:
     finally:
         server.stop()
     violations = static(root)
-    lines = [f"build ok; fresh-database start ok; e2e {passed}/{total} passed"]
+    lines = [f"build ok; fresh-database start ok{'; earlier-stage-database start ok' if (root / STAGE_DB).is_dir() else ''}; e2e {passed}/{total} passed"]
     if failures:
         names = failure_names(failures)
         if names:  # complete list; the details below may be clipped
