@@ -604,7 +604,11 @@ def cmd_run(args, cookie):
     deadline = time.time() + args.timeout
     while time.time() < deadline:
         time.sleep(args.interval)
-        run = get_json(f"{BASE_URL}/api/runs/{run['id']}", cookie)
+        try:
+            run = get_json(f"{BASE_URL}/api/runs/{run['id']}", cookie)
+        except ApiError as error:  # a dropped poll is retried at the next interval
+            print(f"  ... poll failed ({error}); retrying", flush=True)
+            continue
         print(f"  ... status={run.get('status')}")
         if run.get("status") in RUN_TERMINAL:
             print_run(run)

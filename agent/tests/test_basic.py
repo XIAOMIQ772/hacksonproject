@@ -585,16 +585,21 @@ class HelperTest(unittest.TestCase):
         steps = {}
 
         def session(llm, system, text, tools, **kwargs):
-            steps.update({n: kwargs["on_step"](n, []) for n in (1, roles.HELPER_STEPS)})
+            steps[text] = {n: kwargs["on_step"](n, []) for n in (1, roles.REVIEW_STEPS, roles.HELPER_STEPS)}
             return "done"
         roles.loop.run, roles.new_llm = session, (lambda model=None: FakeLLM())
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 helpers = roles.Helpers(Path(tmp), Path(tmp), "engineer", {})
-                helpers.result(helpers.start("review area 1"))
+                helpers.result(helpers.start("build area 1"))
+                helpers.result(helpers.start("Review area 1"))
                 helpers.close()
-            self.assertIsNone(steps[1])
-            self.assertEqual(steps[roles.HELPER_STEPS], roles.WRAP_UP)
+            build, review = (next(v for k, v in steps.items() if task in k) for task in ("build area 1", "Review area 1"))
+            self.assertIsNone(build[1])
+            self.assertIsNone(build[roles.REVIEW_STEPS])
+            self.assertEqual(build[roles.HELPER_STEPS], roles.WRAP_UP.format(steps=roles.HELPER_STEPS))
+            self.assertEqual(review[roles.REVIEW_STEPS], roles.WRAP_UP.format(steps=roles.REVIEW_STEPS))
+            self.assertIsNone(review[roles.HELPER_STEPS])
         finally:
             roles.loop.run, roles.new_llm = original, original_llm
 

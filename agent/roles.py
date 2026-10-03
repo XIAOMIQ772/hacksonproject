@@ -81,7 +81,9 @@ starts it on a fresh database): tests use the seed accounts and records the scen
 changes a seed record is the only test touching it, and other objects are created through the UI with \
 unique names.
 - Helpers, and the conventions you give subagents, reach pages as a user does: from `/` by clicking (signing \
-in = home, then the "Sign in" link); `page.goto` only for `/` and for URLs the scenario opens directly.
+in = home, then the "Sign in" link); `page.goto` only for `/` and for URLs the scenario opens directly. A step \
+that opens a page or record by name without a path ("opens the Issues page", "opens `Compare`") is one click on \
+the link with that exact name on the page the scenario is on, never a click through another page first.
 - Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
 and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
 - Assert exact texts: `getByText(text, {{ exact: true }})` / `toHaveText`, never `toContainText`, which \
@@ -217,7 +219,8 @@ def new_llm(model: str | None = None) -> LLM:
 
 MAX_HELPERS = int(os.environ.get("AGENT_HELPERS", "4"))
 HELPER_STEPS = 25  # a subagent is asked to wrap up here; the lead can continue it with send_subagent
-WRAP_UP = (f"You have used {HELPER_STEPS} steps. Wrap up now: finish the item you are on in a few steps, then "
+REVIEW_STEPS = 10  # a review: longer reviews cost more without finding more defects
+WRAP_UP = ("You have used {steps} steps. Wrap up now: finish the item you are on in a few steps, then "
            "call done with your findings, every file you changed and what is left; the lead can continue you.")
 
 SUBAGENT = {"name": "subagent", "description": f"""Start a subagent: another engineer with your model and \
@@ -323,6 +326,7 @@ class Helpers:
         self.active: set[int] = set()  # subagents that still take messages in their running session
         self.sessions: dict[int, tuple[LLM, list[dict], int]] = {}  # model, final messages and turn of finished ones
         self.roles: dict[int, str] = {}  # each subagent's role and task: its first message again after a compaction
+        self.budgets: dict[int, int] = {}  # the step at which each subagent is asked to wrap up
         self.stop = threading.Event()  # set when the lead's session ends
         # numbering continues after a resume, so labels and transcript files stay unique
         found = [int(m[1]) for f in (root / checkpoint.AGENT_DIR).glob(f"{label}-helper*.jsonl")
@@ -335,6 +339,7 @@ class Helpers:
         if effort in EFFORTS:
             llm.effort = effort
         self.roles[number] = SUBAGENT_ROLE.format(number=number, notes=self.notes, task=task)
+        self.budgets[number] = REVIEW_STEPS if re.search(r"\breview", task[:80], re.I) else HELPER_STEPS
         text = FORKED + self.roles[number] if history else self.roles[number]
         with self.lock:
             self.active.add(number)
@@ -374,7 +379,7 @@ class Helpers:
             raise RuntimeError("the lead's session ended")
         with self.lock:
             pending = self.inbox.pop(number, [])
-        parts = ([follow_up(pending)] if pending else []) + ([WRAP_UP] if step == HELPER_STEPS else [])
+        parts = ([follow_up(pending)] if pending else []) + ([WRAP_UP.format(steps=step)] if step == self.budgets.get(number, HELPER_STEPS) else [])
         return "\n\n".join(parts) or None
 
     def full(self) -> str:
