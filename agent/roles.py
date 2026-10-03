@@ -79,8 +79,9 @@ in = home, then the "Sign in" link); `page.goto` only for `/` and for URLs the s
 - Operate controls the way a user does: open an ARIA combobox by clicking it and click the `option` by role \
 and name (use `selectOption` only for a native `<select>`); open menus by clicking their button.
 - Assert exact texts: `getByText(text, {{ exact: true }})` / `toHaveText`, never `toContainText`, which \
-hides extra characters (an icon letter, a prefix) that break an exact accessible name. Assert the values a \
-scenario checks on the whole page, never inside a row locator: `page.getByText(value)` also matches one element.
+hides extra characters (an icon letter, a prefix) that break an exact accessible name. Assert every value the \
+scenario says is displayed (a name, a role, a status) as `page.getByText(value, {{ exact: true }})` on the \
+whole page, never through a control or a row locator; `page.getByText(value)` also matches one element.
 - Pass `{{ exact: true }}` for short or numeric names ('3', 'A1', 'Save') so they do not also match '13', \
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \
