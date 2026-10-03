@@ -57,22 +57,26 @@ STEPS_PER_REQUIREMENT = 25  # the session stops after 4x this per requirement: a
 
 
 class Builder:
-    def __init__(self, root: Path, req_dir: Path, tree: spec.Node, steps: int):
-        self.root, self.req_dir, self.tree, self.steps = root, req_dir, tree, steps
+    def __init__(self, root: Path, req_dir: Path, tree: spec.Node, steps: int, earlier: bool = False):
+        self.root, self.req_dir, self.tree, self.steps, self.earlier = root, req_dir, tree, steps, earlier
         self.run = checkpoint.RunState(root)
 
     def plan_text(self) -> str:
         path = self.root / roles.PLAN_FILE
         return path.read_text() if path.is_file() else "(not written yet)"
 
+    def earlier_note(self) -> str:
+        return roles.EARLIER_WORK.format(plan=roles.PLAN_FILE) if self.earlier else ""
+
     def task(self) -> str:
         return roles.BUILD_TASK.format(plan=roles.PLAN_FILE, req_dir=self.req_dir, template=workspace_map(self.root),
+                                       earlier=self.earlier_note(),
                                        notes=roles.skills_section(), outline=spec.outline(self.tree),
                                        seeds=spec.seed_facts(self.tree) or "- none")
 
     def refreshed_task(self) -> str:
         return roles.REFRESH_TASK.format(plan=roles.PLAN_FILE, plan_text=self.plan_text(),
-                                         outline_code=roles.code_map(self.root), notes=roles.skills_section(),
+                                         earlier=self.earlier_note(), outline_code=roles.code_map(self.root), notes=roles.skills_section(),
                                          outline=spec.outline(self.tree))
 
     def build(self, resume: bool) -> None:
@@ -96,6 +100,7 @@ def main() -> int:
     started = time.time()
     req_dir, root = Path(args.requirement_path).resolve(), Path(args.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
+    earlier = not args.resume and checkpoint.start_over(root)
     setup(root)
     llm.USAGE_LOG = root / checkpoint.AGENT_DIR / "usage.jsonl"
     llm.LIVE_FILE = root / checkpoint.AGENT_DIR / "llm-live.json"
@@ -103,7 +108,8 @@ def main() -> int:
     if not run.done("template"):
         run.finish("template", checkpoint.commit(root, "template"))
     tree = spec.load(req_dir)
-    builder = Builder(root, req_dir, tree, args.steps or STEPS_PER_REQUIREMENT * len(tree.atomics))
+    builder = Builder(root, req_dir, tree, args.steps or STEPS_PER_REQUIREMENT * len(tree.atomics),
+                      earlier=earlier or (root / checkpoint.EARLIER_PLAN).exists())
     print(f"[agent] {len(tree.atomics)} atomic requirements; model {llm.DEFAULT_MODEL}", flush=True)
     try:
         builder.build(args.resume)

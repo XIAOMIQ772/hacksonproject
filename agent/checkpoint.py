@@ -89,6 +89,27 @@ class Transcript:
         raise ValueError(f"no checkpoint for step {step} in {self.path}")
 
 
+EARLIER_PLAN = "PLAN-earlier.md"
+
+
+def start_over(root: Path) -> bool:
+    """Prepare a fresh run in a workspace an earlier run built (a later stage of a staged task): the earlier
+    run's records move to .agent/earlier-<time>/ so its finished phases are not skipped, and its plan becomes
+    PLAN-earlier.md. Returns whether the workspace holds earlier work."""
+    agent = root / AGENT_DIR
+    earlier = (agent / "run.json").exists()
+    if earlier:
+        dest = agent / f"earlier-{int(time.time())}"
+        dest.mkdir()
+        for item in agent.iterdir():
+            if item.name != "skills" and not item.name.startswith("earlier-"):
+                item.rename(dest / item.name)
+    plan = root / "PLAN.md"
+    if plan.exists():
+        plan.rename(root / EARLIER_PLAN)
+    return earlier or (root / EARLIER_PLAN).exists()
+
+
 class RunState:
     """Finished phases and their commits; every call re-reads the file so instances never go stale."""
 

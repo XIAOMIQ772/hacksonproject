@@ -109,8 +109,8 @@ workspace; only files are.
 5. When every area is done, run check without a pattern, fix what fails, then call done.
 
 Reference images named in the requirements are under {req_dir}; look at them with view_image.
-
-## Workspace files (the starter template; read the ones you need)
+{earlier}
+## Workspace files (read the ones you need)
 {template}
 
 {notes}
@@ -119,11 +119,21 @@ Reference images named in the requirements are under {req_dir}; look at them wit
 ## Seed data stated in scenario preconditions
 {seeds}"""
 
+EARLIER_WORK = """
+## Earlier work in this workspace
+The workspace already holds an app built for earlier requirements, which still apply (their plan is \
+PLAN-earlier.md; their tests are in backend/test-e2e). Build the requirements below into this app: reuse and \
+extend its data model, seed data, pages, components and test helpers instead of rewriting them, and keep its \
+pages working. {plan} covers only the requirements below. Before changing anything, run check without a \
+pattern once and note which earlier tests already fail; they are not yours to fix, but every earlier test \
+that passed must still pass at the end.
+"""
+
 REFRESH_TASK = """Continue building the product below as one working app in this workspace; your earlier \
 progress is summarised in the next message. Follow {plan}, get requirement text with the requirement tool, \
 delegate sidecar work to subagents, and when every area is done run check without a pattern, fix what fails, \
 then call done.
-
+{earlier}
 ## {plan}
 {plan_text}
 

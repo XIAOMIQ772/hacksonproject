@@ -18,6 +18,9 @@ from tools import SECRET_ENV, clip, kill_group, shell
 # Browser dialogs are dismissed automatically by the test browser (rule 13).
 STATIC_RULES = [
     (re.compile(r"\b(?:window\.)?(?:alert|confirm|prompt)\s*\("), "alert/confirm/prompt: use an in-page dialog"),
+    # Client-side routing shows the next page before its data (rule 5).
+    (re.compile(r"<(?:Nav)?Link\b|<Navigate\b|\buseNavigate\s*\("),
+     "react-router Link/NavLink/Navigate/useNavigate: use a plain <a href> or window.location.assign"),
 ]
 
 

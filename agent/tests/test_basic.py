@@ -106,9 +106,10 @@ class StaticTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp, "frontend", "src")
             src.mkdir(parents=True)
-            (src / "A.tsx").write_text('<select id="a">\nconfirm("x")\nwindow.alert("y")\n')
+            (src / "A.tsx").write_text('<select id="a">\nconfirm("x")\nwindow.alert("y")\n<Link to="/a">\n'
+                                       'const go = useNavigate();\n<a href="/b">\n<Routes>\n')
             found = checks.static(Path(tmp))
-        self.assertEqual(len(found), 2)
+        self.assertEqual(len(found), 4)
 
 
 class FakeLLM:
@@ -234,6 +235,22 @@ class CheckpointTest(unittest.TestCase):
             last = Transcript(root, "p").load()
             self.assertEqual(last[2], 4)
             self.assertEqual(len(last[0]), 9)  # task + 4 x (assistant, tool)
+
+    def test_start_over_archives_an_earlier_run(self):
+        from checkpoint import RunState, start_over
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertFalse(start_over(root))
+            RunState(root).finish("build", "abc")
+            (root / ".agent" / "skills").mkdir()
+            (root / ".agent" / "engineer.jsonl").write_text("{}")
+            (root / "PLAN.md").write_text("stage 1")
+            self.assertTrue(start_over(root))
+            self.assertIsNone(RunState(root).done("build"))
+            self.assertTrue((root / ".agent" / "skills").is_dir())
+            self.assertFalse((root / ".agent" / "engineer.jsonl").exists())
+            self.assertEqual(len(list((root / ".agent").glob("earlier-*/engineer.jsonl"))), 1)
+            self.assertEqual((root / "PLAN-earlier.md").read_text(), "stage 1")
 
     def test_resume_resets_files_written_after_the_checkpoint(self):
         from checkpoint import Transcript, commit
