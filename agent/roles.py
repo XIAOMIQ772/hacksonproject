@@ -42,7 +42,8 @@ for a short result, or that can run while you continue:
 - an area is finished: a subagent reviews it against its requirement ids and the list of its files (exactly \
 once, when its tests pass; never an area still being built, an area twice, a cross-cutting rule set or the \
 whole app). The review reads the listed files with `grep -n` and `sed -n` ranges (no whole-file `cat` of a file \
-over 150 lines) and reports at most 8 findings, each with file:line and the requirement sentence it breaks;
+over 150 lines) and reports at most 8 findings, each with file:line and the requirement sentence it breaks, \
+within 10 tool calls;
 - you start building an area and write its tests with your first slice: a subagent drafts the e2e tests of the \
 next area into its spec file, reading only the requirement text, PLAN.md and helpers.ts and never starting a \
 server, browser or check;
