@@ -87,6 +87,20 @@ class Server:
         kill_group(self.proc.pid)
 
 
+LONG_FILE_LINES = 400
+
+
+def long_files(root: Path) -> list[tuple[str, int]]:
+    """Source files over LONG_FILE_LINES lines, longest first."""
+    found = []
+    for part in ("frontend/src", "backend/src"):
+        for path in (root / part).rglob("*.[jt]s*"):
+            count = path.read_text(errors="replace").count("\n") + 1
+            if count > LONG_FILE_LINES:
+                found.append((str(path.relative_to(root)), count))
+    return sorted(found, key=lambda item: -item[1])
+
+
 def static(root: Path) -> list[str]:
     """Violations of the component rules; a line containing 'required by REQ-' is an explicit exception."""
     found = []
@@ -281,6 +295,10 @@ def check(root: Path, pattern: str = "") -> tuple[bool, str]:
         lines.append("BROWSER ERRORS (uncaught in the page during the tests; page, then message):\n"
                      + "\n".join(f"- {line}" for line in browser[:10]))
     if violations:
-        lines.append("RULE VIOLATIONS (rule 13):\n" + "\n".join(violations[:30]))
+        lines.append("RULE VIOLATIONS (rules 5 and 13):\n" + "\n".join(violations[:30]))
+    long = long_files(root)
+    if long:
+        lines.append("LONG FILES (split before editing further; patches to long files fail):\n"
+                     + "\n".join(f"- {name} ({count} lines)" for name, count in long))
     ok = total > 0 and passed == total and not violations
     return ok, "\n".join(lines)

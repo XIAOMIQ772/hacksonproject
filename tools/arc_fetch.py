@@ -589,8 +589,15 @@ def cmd_run(args, cookie):
         "requirement_id": args.requirement_id,
     }, cookie)
     run = resp.get("run") or resp
-    if not args.no_start:
-        run = post_empty(f"{BASE_URL}/api/runs/{run['id']}/start", cookie)
+    while not args.no_start:
+        try:
+            run = post_empty(f"{BASE_URL}/api/runs/{run['id']}/start", cookie)
+            break
+        except ApiError as error:  # the platform's run capacity is full: retry the same run later
+            if error.status != 429:
+                raise
+            print(f"  ... platform busy, retrying start of {run['id']} in 120s", flush=True)
+            time.sleep(120)
     print_run(run)
     if not args.wait:
         return

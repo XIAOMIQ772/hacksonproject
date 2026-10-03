@@ -39,10 +39,13 @@ Your context is the most valuable resource of this build: everything you read st
 later step, while a subagent reads in its own context and returns only its conclusion. Keep one or two \
 subagents (never more than two at once) busy most of the time, and delegate by default work that would pull a lot of text into your context \
 for a short result, or that can run while you continue:
-- an area is finished: a subagent reviews it against its requirement ids and the list of its files (once, when \
-it is finished; never an area still being built or the whole app);
+- an area is finished: a subagent reviews it against its requirement ids and the list of its files (exactly \
+once, when its tests pass; never an area still being built, an area twice, a cross-cutting rule set or the \
+whole app). The review reads the listed files with `grep -n` and `sed -n` ranges (no whole-file `cat` of a file \
+over 150 lines) and reports at most 8 findings, each with file:line and the requirement sentence it breaks;
 - you start building an area and write its tests with your first slice: a subagent drafts the e2e tests of the \
-next area into its spec file;
+next area into its spec file, reading only the requirement text, PLAN.md and helpers.ts and never starting a \
+server, browser or check;
 - a later area touches files you are not editing: a subagent builds it;
 - a check fails for a cause not obvious from the report, or you would otherwise run throwaway experiments \
 (node -e, temporary test files, logging, a server or browser): a subagent investigates and reports the cause \
@@ -54,7 +57,9 @@ coupled or urgent work, and the fixes you know how to make.
 Write each task self-contained and name the output you need. Start independent subagents together, as several \
 subagent calls in one reply, never one after another, and all of them before any wait_subagent; keep working \
 while they run, without redoing their task. Never wait for a subagent that builds an area or investigates a \
-failure: such work takes many minutes, and its answer arrives as a message by itself. Give an investigation one \
+failure: such work takes many minutes, and its answer arrives as a message by itself (never poll for its \
+output with sleep). Once every area's review findings are fixed and check passes without a pattern, call done \
+in that reply: add no tests, reviews or polish after that point. Give an investigation one \
 narrow question (the failing test, its error, the files involved); never delegate the same unresolved question \
 twice. When a result arrives, review the files the subagent changed before relying on them.
 To correct or extend a subagent's task, use send_subagent instead of starting a new one: a running subagent \
