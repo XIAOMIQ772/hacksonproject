@@ -86,7 +86,9 @@ whole page, never through a control or a row locator; `page.getByText(value)` al
 'A10' or 'Save rule'.
 - Start waiting for an event before the action that triggers it: `const d = page.waitForEvent('download'); \
 await button.click(); await d;` (same for popups and file choosers).
-- A test that fails must be fixed in the app unless the test contradicts the requirement text.
+- A failing test is fixed in the app. Never edit an expected value the requirement quotes (a message, error \
+code, formula text, name) to match what the app produces; change a test only where it contradicts a \
+requirement sentence, and quote that sentence.
 - When the same test fails twice, stop changing code until you know why: the check report shows the page for the \
 first failures (its elements, roles and names) under the failing test; compare it with what the test looks for. \
 Never add debug assertions, logging or other temporary code to tests or the app, and remove any you find.
